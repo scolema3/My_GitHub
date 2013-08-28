@@ -191,6 +191,8 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
   // Zone flag to capture entire recrocal space volume
   if (  (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
   } else {
+
+
       R_Ewald = (1 / lambda);
       double Rnorm = R_Ewald/ sqrt(Zone[0] * Zone[0] +
                      Zone[1] * Zone[1] +  Zone[2]* Zone[2]);
@@ -251,7 +253,6 @@ int ncount=0;
       dK[i] = prd_inv[i]*c[i];
       Ksearch[i] = ceil(Kmax / dK[i]);
     } 
-cout << Ksearch[0] << " , " << Ksearch[1] << " , "   << Ksearch[2] << " , "   << endl;
     
     for (int k = -Ksearch[2]; k <= Ksearch[2]; k++) {
       for (int j = -Ksearch[1]; j <= Ksearch[1]; j++) {
@@ -265,14 +266,17 @@ cout << Ksearch[0] << " , " << Ksearch[1] << " , "   << Ksearch[2] << " , "   <<
             r=0.0;
             for (int m=0; m<3; m++) r += pow(K[m] - Zone[m],2.0);
             r = sqrt(r);     
-cout << r << endl;                   
             if  ( (r >  (R_Ewald - dR_Ewald) ) && (r < (R_Ewald + dR_Ewald) ) ){
-            ncount++;
-              for (int ii=0; ii<3; ii++) {
-                if ( Ksearch[ii] > Knmax[ii] ) Knmax[ii] = Ksearch[ii];
-                if ( Ksearch[ii] < Knmin[ii] ) Knmin[ii] = Ksearch[ii];
-                ncount++;
-              }
+                
+                if ( i < Knmin[0] ) Knmin[0] = i;
+                if ( j < Knmin[1] ) Knmin[1] = j;
+                if ( k < Knmin[2] ) Knmin[2] = k;                
+                
+                if ( i > Knmax[0] ) Knmax[0] = i;
+                if ( j > Knmax[1] ) Knmax[1] = j;
+                if ( k > Knmax[2] ) Knmax[2] = k; 
+
+
             }
           }
         } 
@@ -280,7 +284,7 @@ cout << r << endl;
     } 
   }
 
-cout << " Ncount " << ncount << endl;
+cout << " KNMAX/MIN  " << Knmin[0] << " " << Knmax[0] << " " << Knmin[1] << " " << Knmax[1] << " "  << Knmin[2] << " " << Knmax[2]  << endl;
 
   // Finding dimensions for vtk files
   int Dim[3];
@@ -596,9 +600,9 @@ void FixAveTimeSAED::invoke_vector(bigint ntimestep)
 
       // Zone flag to capture entire recrocal space volume
       if ( (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
-        for (int k = -Knmax[2]; k <= Knmax[2]; k++) {
-          for (int j = -Knmax[1]; j <= Knmax[1]; j++) {
-            for (int i = -Knmax[0]; i <= Knmax[0]; i++) {
+        for (int k = Knmin[2]; k <= Knmax[2]; k++) {
+          for (int j = Knmin[1]; j <= Knmax[1]; j++) {
+            for (int i = Knmin[0]; i <= Knmax[0]; i++) {
               K[0] = i * dK[0];
               K[1] = j * dK[1];
               K[2] = k * dK[2];
@@ -617,18 +621,17 @@ void FixAveTimeSAED::invoke_vector(bigint ntimestep)
           }
         }
       } else {
-        for (int k = -Knmax[2]; k <= Knmax[2]; k++) {
-          for (int j = -Knmax[1]; j <= Knmax[1]; j++) {
-            for (int i = -Knmax[0]; i <= Knmax[0]; i++) {
+        for (int k = Knmin[2]; k <= Knmax[2]; k++) {
+          for (int j = Knmin[1]; j <= Knmax[1]; j++) {
+            for (int i = Knmin[0]; i <= Knmax[0]; i++) {
               K[0] = i * dK[0];
               K[1] = j * dK[1];
               K[2] = k * dK[2];
               dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
               if (dinv2 < Kmax * Kmax) {
                 r=0.0;
-                for (int m=0; m<3; m++)
-                  r += pow(K[m] - Zone[m],2.0);
-                  r = sqrt(r);
+                for (int m=0; m<3; m++) r += pow(K[m] - Zone[m],2.0);
+                r = sqrt(r);
                 if  ( (r >  (R_Ewald - dR_Ewald) ) && (r < (R_Ewald + dR_Ewald) ) ){
                  fprintf(fp,"%g\n",array_total[NROW1][0]/norm);
                  fflush(fp);
@@ -703,6 +706,7 @@ void FixAveTimeSAED::options(int narg, char **arg)
   title1 = NULL;
   title2 = NULL;
   title3 = NULL;
+  lambda = 0;
 
   // optional args
 
@@ -805,6 +809,9 @@ void FixAveTimeSAED::options(int narg, char **arg)
       iarg += 2;
     } else error->all(FLERR,"Illegal fix ave/time command");
   }
+  
+  if (lambda <= 0 )
+    error->all(FLERR,"Compute SAED: lambda must be greater than 0 ");
 }
 
 /* ----------------------------------------------------------------------
