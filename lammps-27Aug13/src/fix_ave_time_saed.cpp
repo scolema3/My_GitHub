@@ -192,7 +192,6 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
   if (  (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
   } else {
 
-
       R_Ewald = (1 / lambda);
       double Rnorm = R_Ewald/ sqrt(Zone[0] * Zone[0] +
                      Zone[1] * Zone[1] +  Zone[2]* Zone[2]);
@@ -217,6 +216,7 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
     prd_inv[2] = 1 / prd[2];
     ave_inv += prd_inv[2];
   }
+ 
   // Using the average inverse dimensions for non-periodic direction
   ave_inv = ave_inv / (periodicity[0] + periodicity[1] + periodicity[2]);
   if (!periodicity[0]){
@@ -229,7 +229,6 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
     prd_inv[2] = ave_inv;
   }
 
-int ncount=0;
   // Find integer dimensions of the reciprocal lattice box bounds
   if ( (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
     for (int i=0; i<3; i++) {
@@ -238,9 +237,7 @@ int ncount=0;
       Knmin[i] = -Knmax[i];
     } 
   } else {
-  
-  ncount++;
-  
+ 
     for (int i=0; i<3; i++) {
       Knmax[i] = -10000;
       Knmin[i] =  10000;
@@ -275,8 +272,6 @@ int ncount=0;
                 if ( i > Knmax[0] ) Knmax[0] = i;
                 if ( j > Knmax[1] ) Knmax[1] = j;
                 if ( k > Knmax[2] ) Knmax[2] = k; 
-
-
             }
           }
         } 
@@ -284,9 +279,7 @@ int ncount=0;
     } 
   }
 
-cout << " KNMAX/MIN  " << Knmin[0] << " " << Knmax[0] << " " << Knmin[1] << " " << Knmax[1] << " "  << Knmin[2] << " " << Knmax[2]  << endl;
-
-  // Finding dimensions for vtk files
+ // Finding dimensions for vtk files
   int Dim[3];
   for (int i=0; i<3; i++) {
     if ( ( (Knmin[i] > 0) && (Knmax[i] > 0) ) || ( (Knmin[i] < 0) && (Knmax[i] < 0) ) ){
@@ -474,8 +467,6 @@ void FixAveTimeSAED::end_of_step()
 void FixAveTimeSAED::invoke_vector(bigint ntimestep)
 {
   int i,j,m;
-
-
   // zero if first step
 
   if (irepeat == 0)
