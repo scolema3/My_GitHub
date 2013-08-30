@@ -291,8 +291,8 @@ void ComputeXRD::compute_array()
 
   double frac=0.1;
   if (me == 0 && echo) {
-    if (screen) fprintf(screen,"Computing XRD intensities");
-    if (logfile) fprintf(screen,"Computing XRD intensities");
+    if (screen) fprintf(screen,"Computing XRD intensities\n");
+    if (logfile) fprintf(screen,"Computing XRD intensities\n");
   }
 
   int nRows = 0;
@@ -318,7 +318,7 @@ void ComputeXRD::compute_array()
               Fatom2 = 0.0;
 
               // Calculate the atomic structre factor by type	
-              S = sin(array[i][3]) / lambda;    	
+              S = sin(ang) / lambda;    	
               for (int ii = 0; ii < ntypes; ii++){
                 f[ii] = 0;
                 int C = ii * 9;
