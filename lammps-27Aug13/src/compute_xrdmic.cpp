@@ -28,7 +28,10 @@
 #include "stdio.h"
 #include "string.h"
 #include "omp.h"
+
+#ifdef ENABLE_MIC
 #include "offload.h"
+#endif
 
 #include <iostream>
 
