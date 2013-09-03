@@ -329,7 +329,7 @@ void ComputeXRD::compute_array()
                 }
                 f[ii] += ASF[D];
               }
-	  
+
               // Evaluate the structure factor equation -- looping over all atoms
               for (int ii = 0; ii < nlocal; ii++){
                 if (mask[ii] & groupbit) {
@@ -340,10 +340,11 @@ void ComputeXRD::compute_array()
                              K[1] * x[ii][1] + K[2] * x[ii][2]));
                 }
               }
-              Fvec1[i] = Fatom1 * (1 + cos(2*ang) * cos(2*ang)) /
-                                  (cos(ang) *sin(ang) * sin(ang));
-              Fvec2[i] = Fatom2 * (1 + cos(2*ang) * cos(2*ang)) /
-                                  (cos(ang) *sin(ang) * sin(ang));
+
+              Fvec1[n] = Fatom1 * (1 + cos( 2 * ang ) * cos( 2 * ang )) /
+                                  ( cos( ang ) * sin ( ang ) * sin( ang ));
+              Fvec2[n] = Fatom2 * (1 + cos(2*ang) * cos( 2 * ang )) /
+                                  (cos( ang ) *sin( ang ) * sin( ang ));
 
               if ( i >= (frac * size_array_rows) ) {
                 frac += 0.1;
@@ -351,7 +352,8 @@ void ComputeXRD::compute_array()
                   if (screen) fprintf(screen," .");
                   if (logfile) fprintf(screen," .");
                 }
-              }    
+              }
+              n++;
             } // Angle Range
           }  // Kmax
         } // l-loop
@@ -373,7 +375,7 @@ void ComputeXRD::compute_array()
               Fatom2 = 0.0;
 
               // Calculate the atomic structre factor by type
-              S = sin(array[i][3]) / lambda;
+              S = sin(ang) / lambda;
               for (int ii = 0; ii < ntypes; ii++){
                 f[ii] = 0;
                 int C = ii * 9;
@@ -395,8 +397,8 @@ void ComputeXRD::compute_array()
                              K[1] * x[ii][1] + K[2] * x[ii][2]));
                 }
               }
-              Fvec1[i] = Fatom1;
-              Fvec2[i] = Fatom2;
+              Fvec1[n] = Fatom1;
+              Fvec2[n] = Fatom2;
 
               if ( i >= (frac * size_array_rows) ) {
                 frac += 0.1;
@@ -405,6 +407,7 @@ void ComputeXRD::compute_array()
                   if (logfile) fprintf(screen," .");
                 }
               }
+              n++;
             } // Angle Range
           }  // Kmax
         } // l-loop
@@ -420,13 +423,32 @@ void ComputeXRD::compute_array()
   double *scratch1 = new double[size_array_rows];
   double *scratch2 = new double[size_array_rows];
   
+if (me == 0 && echo) {
+  if (screen) fprintf(screen,"Check1\n");
+  if (logfile) fprintf(screen,"Check1\n");
+}
+
+
   // Sum intensity for each ang-hkl combination across processors
   MPI_Allreduce(Fvec1,scratch1,size_array_rows,MPI_DOUBLE,MPI_SUM,world);
   MPI_Allreduce(Fvec2,scratch2,size_array_rows,MPI_DOUBLE,MPI_SUM,world);
 
+if (me == 0 && echo) {
+  if (screen) fprintf(screen,"Check2\n");
+  if (logfile) fprintf(screen,"Check2\n");
+}
+
+
   for (int i = 0; i < size_array_rows; i++) {
   array[i][1] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i]) / natoms;
   }
+
+
+if (me == 0 && echo) {
+  if (screen) fprintf(screen,"Check3\n");
+  if (logfile) fprintf(screen,"Check3\n");
+}
+
 
   delete [] scratch1;
   delete [] scratch2;
