@@ -642,7 +642,6 @@ void FixAveTimeSAED::invoke_vector(bigint ntimestep)
           }
         }
       }
-cout << "Nrows = " << NROW1 << " " << NROW2 << endl;
     }
 }
 

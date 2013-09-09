@@ -206,10 +206,10 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   size_array_cols = 2;
   
   if (me == 0) {
-    if (logfile) {
-      fprintf(logfile,"Reciprocal point spacing in k1,k2,k3 = %g %g %g\n",
+    if (screen) {
+      fprintf(screen,"Reciprocal point spacing in k1,k2,k3 = %g %g %g\n",
               dK[0], dK[1], dK[2]);
-      fprintf(logfile,"Compute XRD id:%s, # of atoms:%d, # of relp:%d\n",id,natoms,nRows);
+      fprintf(screen,"Compute XRD id:%s, # of atoms:%d, # of relp:%d\n",id,natoms,nRows);
     }
   }
 
@@ -286,7 +286,7 @@ void ComputeXRD::compute_array()
 
   double frac = 0.1;
   if (me == 0 && echo) {
-    if (logfile) fprintf(logfile,"Computing XRD intensities\n");
+    if (screen) fprintf(screen,"Computing XRD intensities\n");
   }
 
   int nRows = 0;
@@ -344,7 +344,7 @@ void ComputeXRD::compute_array()
               if ( n >= (frac * size_array_rows) ) {
                 frac += 0.1;
                 if (me == 0 && echo) {
-                  if (logfile) fprintf(logfile," .");
+                  if (screen) fprintf(screen," .");
                 }
               }
               n++;
@@ -398,7 +398,7 @@ void ComputeXRD::compute_array()
               if ( n >= (frac * size_array_rows) ) {
                 frac += 0.1;
                 if (me == 0 && echo) {
-                  if (logfile) fprintf(logfile," .");
+                  if (screen) fprintf(screen," .");
                 }
               }
               n++;
@@ -410,7 +410,7 @@ void ComputeXRD::compute_array()
   } 
 
   if (me == 0 && echo) {
-    if (logfile) fprintf(logfile,"\nCompute XRD Complete.\n");
+    if (screen) fprintf(screen,"\nCompute XRD Complete.\n");
   }
 
   double *scratch1 = new double[size_array_rows];
