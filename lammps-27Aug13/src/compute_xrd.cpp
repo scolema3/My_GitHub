@@ -206,15 +206,10 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   size_array_cols = 2;
   
   if (me == 0) {
-    if (screen) {
-      fprintf(screen,"Reciprocal point spacing in k1,k2,k3 = %g %g %g\n",
-              dK[0], dK[1], dK[2]);
-      fprintf(screen,"Compute XRD id:%s, # of atoms:%d, # of relp:%d\n",id,natoms,nRows);
-    }
     if (logfile) {
       fprintf(logfile,"Reciprocal point spacing in k1,k2,k3 = %g %g %g\n",
               dK[0], dK[1], dK[2]);
-      fprintf(screen,"Compute XRD id:%s, # of atoms:%d, # of relp:%d\n",id,natoms,nRows);
+      fprintf(logfile,"Compute XRD id:%s, # of atoms:%d, # of relp:%d\n",id,natoms,nRows);
     }
   }
 
@@ -289,10 +284,9 @@ void ComputeXRD::compute_array()
                                         // -- Vector entries correspond to 
                                         //    diffraction angles
 
-  double frac=0.1;
+  double frac = 0.1;
   if (me == 0 && echo) {
-    if (screen) fprintf(screen,"Computing XRD intensities\n");
-    if (logfile) fprintf(screen,"Computing XRD intensities\n");
+    if (logfile) fprintf(logfile,"Computing XRD intensities\n");
   }
 
   int nRows = 0;
@@ -346,11 +340,11 @@ void ComputeXRD::compute_array()
               Fvec2[n] = Fatom2 * (1 + cos(2*ang) * cos( 2 * ang )) /
                                   (cos( ang ) *sin( ang ) * sin( ang ));
 
-              if ( i >= (frac * size_array_rows) ) {
+              // Reporting progress of computation progress
+              if ( n >= (frac * size_array_rows) ) {
                 frac += 0.1;
                 if (me == 0 && echo) {
-                  if (screen) fprintf(screen," .");
-                  if (logfile) fprintf(screen," .");
+                  if (logfile) fprintf(logfile," .");
                 }
               }
               n++;
@@ -400,11 +394,11 @@ void ComputeXRD::compute_array()
               Fvec1[n] = Fatom1;
               Fvec2[n] = Fatom2;
 
-              if ( i >= (frac * size_array_rows) ) {
+              // Reporting progress of computation progress
+              if ( n >= (frac * size_array_rows) ) {
                 frac += 0.1;
                 if (me == 0 && echo) {
-                  if (screen) fprintf(screen," .");
-                  if (logfile) fprintf(screen," .");
+                  if (logfile) fprintf(logfile," .");
                 }
               }
               n++;
@@ -416,39 +410,19 @@ void ComputeXRD::compute_array()
   } 
 
   if (me == 0 && echo) {
-    if (screen) fprintf(screen,"\nCompute XRD Complete.\n");
-    if (logfile) fprintf(screen,"\nCompute XRD Complete.\n");
+    if (logfile) fprintf(logfile,"\nCompute XRD Complete.\n");
   }
 
   double *scratch1 = new double[size_array_rows];
   double *scratch2 = new double[size_array_rows];
   
-if (me == 0 && echo) {
-  if (screen) fprintf(screen,"Check1\n");
-  if (logfile) fprintf(screen,"Check1\n");
-}
-
-
   // Sum intensity for each ang-hkl combination across processors
   MPI_Allreduce(Fvec1,scratch1,size_array_rows,MPI_DOUBLE,MPI_SUM,world);
   MPI_Allreduce(Fvec2,scratch2,size_array_rows,MPI_DOUBLE,MPI_SUM,world);
 
-if (me == 0 && echo) {
-  if (screen) fprintf(screen,"Check2\n");
-  if (logfile) fprintf(screen,"Check2\n");
-}
-
-
   for (int i = 0; i < size_array_rows; i++) {
   array[i][1] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i]) / natoms;
   }
-
-
-if (me == 0 && echo) {
-  if (screen) fprintf(screen,"Check3\n");
-  if (logfile) fprintf(screen,"Check3\n");
-}
-
 
   delete [] scratch1;
   delete [] scratch2;

@@ -214,12 +214,8 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
  
 
   if (me == 0) {
-    if (screen)
-      fprintf(screen,"Compute SAED id:%s, # of atoms:%d, # of relp:%d\n",id,natoms,nRows);
-      fprintf(screen,"Reciprocal point spacing in k1,k2,k3 = %g %g %g\n",
-              dK[0], dK[1], dK[2]);
     if (logfile)
-      fprintf(screen,"Compute SAED id:%s, # of atoms:%d, # of relp:%d\n",id,natoms,nRows);
+      fprintf(logfile,"Compute SAED id:%s, # of atoms:%d, # of relp:%d\n",id,natoms,nRows);
       fprintf(logfile,"Reciprocal point spacing in k1,k2,k3 = %g %g %g\n",
               dK[0], dK[1], dK[2]);
   }
@@ -333,7 +329,6 @@ void ComputeSAED::compute_vector()
 
   double frac = 0.1;
   if (me == 0 && echo) {
-    if (screen) fprintf(screen,"Beginning SAED compute\n");
     if (logfile) fprintf(logfile,"Beginning SAED compute\n");
   }
 
@@ -384,8 +379,7 @@ void ComputeSAED::compute_vector()
             if ( n >= (frac * nRows) ) {
               frac += 0.1;
               if (me == 0 && echo) {
-                if (screen) fprintf(screen," .");
-                if (logfile) fprintf(screen," .");
+                if (logfile) fprintf(logfile," .");
               }
             }
 
@@ -450,8 +444,7 @@ void ComputeSAED::compute_vector()
               if ( n >= (frac * nRows) ) {
                 frac += 0.1;
                 if (me == 0 && echo) {
-                  if (screen) fprintf(screen," .");
-                  if (logfile) fprintf(screen," .");
+                  if (logfile) fprintf(logfile," .");
                 }
               }
 
@@ -478,8 +471,6 @@ void ComputeSAED::compute_vector()
   delete [] Fvec2;
 
   if (me == 0 && echo) {
-    if (screen)
-      fprintf(screen,"\nFinished SAED compute array\n");
     if (logfile)
       fprintf(logfile,"\nFinished SAED compute array\n");
   }
