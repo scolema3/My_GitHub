@@ -1,4 +1,4 @@
-variable	A string "SAED3_Ni61_400K_0.005eV_0"
+variable	A string "saed_Ni61_400K_0.005eV_"
 print		$A
 
 variable        eLambda       equal 0.0251
@@ -16,7 +16,7 @@ timestep        0.001
 ### Read restart data and set up simulation
 atom_modify     map array sort 0 0.0
 
-read_data       /scratch/sxc033/Sandia_NiGB/SAED/datafiles/Ni61_400K_0.005eV_0.data
+read_data       Ni61_400K_0.005eV_0.data
 pair_style      none
 mass    	* 1
 
@@ -35,11 +35,10 @@ compute         SAED all saed ${eLambda} 28 28 28 28 28 Kmax ${Kmax} &
                 Zone ${Zone0} ${Zone1} ${Zone2} c ${eRes0} ${eRes1} ${eRes2} &
                 dR_Ewald ${dR_Ewald} echo
 
-fix             2 all ave/time/saed 1 1 1   c_SAED & 
+fix             2 all ave/time/saed 1 1 1  c_SAED & 
                 file $A_${Zone0}${Zone1}${Zone2}.saed mode vector  &
-                Kmax ${Kmax} &
-                Zone ${Zone0} ${Zone1} ${Zone2} c ${eRes0} ${eRes1} ${eRes2} &
-                dR_Ewald ${dR_Ewald}
+                Kmax ${Kmax} lambda ${eLambda} dR_Ewald ${dR_Ewald} &
+                Zone ${Zone0} ${Zone1} ${Zone2} c ${eRes0} ${eRes1} ${eRes2}
     
 
 timestep        0.001
