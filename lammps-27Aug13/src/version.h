@@ -1,1 +1,1 @@
-#define LAMMPS_VERSION "27 Aug 2013 : Diffraction2"
+#define LAMMPS_VERSION "27 Aug 2013 : Diffraction3"

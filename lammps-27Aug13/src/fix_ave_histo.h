@@ -38,14 +38,14 @@ class FixAveHisto : public Fix {
   void reset_timestep(bigint);
 
  private:
-  int me,nvalues;
+  int me,nvalues, maxvalues;
   int nrepeat,nfreq,irepeat;
   bigint nvalid;
   int *which,*argindex,*value2index;
   char **ids;
   FILE *fp;
   double lo,hi,binsize,bininv;
-  int kind,beyond,overwrite;
+  int kind,beyond,overwrite,weights;
   long filepos;
 
   double stats[4],stats_total[4],stats_all[4];
@@ -59,6 +59,9 @@ class FixAveHisto : public Fix {
   double *vector;
   int maxatom;
 
+
+  int Size[2];
+
   int ave,nwindow,nsum,startstep,mode;
   char *title1,*title2,*title3;
   int iwindow,window_limit;
@@ -66,6 +69,12 @@ class FixAveHisto : public Fix {
   void bin_one(double);
   void bin_vector(int, double *, int);
   void bin_atoms(double *, int);
+  
+  void bin_one_weights(double, double);
+  void bin_vector_weights(int, double *, int, double *, int);
+  void bin_atoms_weights(double *, int, double *, int);
+ 
+  
   void options(int, char **);
   void allocate_values(int);
   bigint nextvalid();

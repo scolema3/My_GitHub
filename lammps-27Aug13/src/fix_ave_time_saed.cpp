@@ -291,16 +291,16 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
     if (mode == VECTOR) {
       for (int i = 0; i < nvalues; i++) {
         if (which[i] == COMPUTE) {
-          fprintf(fp,"# vtk DataFile Version 3.0 c_%s \n",ids[i]);
-          fprintf(fp,"Image data set \n");
-          fprintf(fp,"ASCII \n");
-          fprintf(fp,"DATASET STRUCTURED_POINTS \n");
-          fprintf(fp,"DIMENSIONS %d %d %d \n", Dim[0],  Dim[1], Dim[2]);
-          fprintf(fp,"ASPECT_RATIO %g %g %g \n", dK[0], dK[1], dK[2]);
-          fprintf(fp,"ORIGIN %g %g %g \n", Knmin[0] * dK[0],  Knmin[1] * dK[1], Knmin[2] * dK[2]);
-          fprintf(fp,"POINT_DATA %d \n ",  Dim[0] *  Dim[1] * Dim[2] );
-          fprintf(fp,"SCALARS intensity float \n");
-          fprintf(fp,"LOOKUP_TABLE default \n");
+          fprintf(fp,"# vtk DataFile Version 3.0 c_%s\n",ids[i]);
+          fprintf(fp,"Image data set\n");
+          fprintf(fp,"ASCII\n");
+          fprintf(fp,"DATASET STRUCTURED_POINTS\n");
+          fprintf(fp,"DIMENSIONS %d %d %d\n", Dim[0],  Dim[1], Dim[2]);
+          fprintf(fp,"ASPECT_RATIO %g %g %g\n", dK[0], dK[1], dK[2]);
+          fprintf(fp,"ORIGIN %g %g %g\n", Knmin[0] * dK[0],  Knmin[1] * dK[1], Knmin[2] * dK[2]);
+          fprintf(fp,"POINT_DATA %d\n",  Dim[0] *  Dim[1] * Dim[2] );
+          fprintf(fp,"SCALARS intensity float\n");
+          fprintf(fp,"LOOKUP_TABLE default\n");
         } else break;
         if (argindex[i]) fprintf(fp,"[%d]",argindex[i]);
       }
