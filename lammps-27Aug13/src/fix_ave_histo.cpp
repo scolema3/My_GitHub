@@ -1383,127 +1383,129 @@ void FixAveHisto::options(int narg, char **arg)
       int maxvalues = 2;
       allocate_values(maxvalues);
       nvalues =1;
-      while (iarg < narg) {
-        if (strcmp(arg[iarg],"x") == 0) {
-          which[nvalues] = X;
-          argindex[nvalues] = 0;
-          ids[nvalues] = NULL;
-          nvalues++;
-          iarg++;
-        } else if (strcmp(arg[iarg],"y") == 0) {
-          which[nvalues] = X;
-          argindex[nvalues] = 1;
-          ids[nvalues] = NULL;
-          nvalues++;
-          iarg++;
-        } else if (strcmp(arg[iarg],"z") == 0) {
-          which[nvalues] = X;
-          argindex[nvalues] = 2;
-          ids[nvalues] = NULL;
-          nvalues++;
-          iarg++;
-        } else if (strcmp(arg[iarg],"vx") == 0) {
-          which[nvalues] = V;
-          argindex[nvalues] = 0;
-          ids[nvalues] = NULL;
-          nvalues++;
-          iarg++;
-        } else if (strcmp(arg[iarg],"vy") == 0) {
-          which[nvalues] = V;
-          argindex[nvalues] = 1;
-          ids[nvalues] = NULL;
-          nvalues++;
-          iarg++;
-        } else if (strcmp(arg[iarg],"vz") == 0) {
-          which[nvalues] = V;
-          argindex[nvalues] = 2;
-          ids[nvalues] = NULL;
-          nvalues++;
-          iarg++;
-        } else if (strcmp(arg[iarg],"fx") == 0) {
-          which[nvalues] = F;
-          argindex[nvalues] = 0;
-          ids[nvalues] = NULL;
-          nvalues++;
-          iarg++;
-        } else if (strcmp(arg[iarg],"fy") == 0) {
-          which[nvalues] = F;
-          argindex[nvalues] = 1;
-          ids[nvalues] = NULL;
-          nvalues++;
-          iarg++;
-        } else if (strcmp(arg[iarg],"fz") == 0) {
-          which[nvalues] = F;
-          argindex[nvalues] = 2;
-          ids[nvalues] = NULL;
-          nvalues++;
-          iarg++;
-        } else if ((strncmp(arg[iarg],"c_",2) == 0) ||
-            (strncmp(arg[iarg],"f_",2) == 0) ||
-            (strncmp(arg[iarg],"v_",2) == 0)) {
-            if (arg[iarg][0] == 'c') which[nvalues] = COMPUTE;
-            else if (arg[iarg][0] == 'f') which[nvalues] = FIX;
-            else if (arg[iarg][0] == 'v') which[nvalues] = VARIABLE;
+      
+      
+      if (strcmp(arg[iarg],"x") == 0) {
+        which[nvalues] = X;
+        argindex[nvalues] = 0;
+        ids[nvalues] = NULL;
+        nvalues++;
+        iarg++;
+      } else if (strcmp(arg[iarg],"y") == 0) {
+        which[nvalues] = X;
+        argindex[nvalues] = 1;
+        ids[nvalues] = NULL;
+        nvalues++;
+        iarg++;
+      } else if (strcmp(arg[iarg],"z") == 0) {
+        which[nvalues] = X;
+        argindex[nvalues] = 2;
+        ids[nvalues] = NULL;
+        nvalues++;
+        iarg++;
+      } else if (strcmp(arg[iarg],"vx") == 0) {
+        which[nvalues] = V;
+        argindex[nvalues] = 0;
+        ids[nvalues] = NULL;
+        nvalues++;
+        iarg++;
+      } else if (strcmp(arg[iarg],"vy") == 0) {
+        which[nvalues] = V;
+        argindex[nvalues] = 1;
+        ids[nvalues] = NULL;
+        nvalues++;
+        iarg++;
+      } else if (strcmp(arg[iarg],"vz") == 0) {
+        which[nvalues] = V;
+        argindex[nvalues] = 2;
+        ids[nvalues] = NULL;
+        nvalues++;
+        iarg++;
+      } else if (strcmp(arg[iarg],"fx") == 0) {
+        which[nvalues] = F;
+        argindex[nvalues] = 0;
+        ids[nvalues] = NULL;
+        nvalues++;
+        iarg++;
+      } else if (strcmp(arg[iarg],"fy") == 0) {
+        which[nvalues] = F;
+        argindex[nvalues] = 1;
+        ids[nvalues] = NULL;
+        nvalues++;
+        iarg++;
+      } else if (strcmp(arg[iarg],"fz") == 0) {
+        which[nvalues] = F;
+        argindex[nvalues] = 2;
+        ids[nvalues] = NULL;
+        nvalues++;
+        iarg++;
+      } else if ((strncmp(arg[iarg],"c_",2) == 0) ||
+          (strncmp(arg[iarg],"f_",2) == 0) ||
+          (strncmp(arg[iarg],"v_",2) == 0)) {
+        if (arg[iarg][0] == 'c') which[nvalues] = COMPUTE;
+        else if (arg[iarg][0] == 'f') which[nvalues] = FIX;
+        else if (arg[iarg][0] == 'v') which[nvalues] = VARIABLE;
     
-          int n = strlen(arg[iarg]);
-          char *suffix = new char[n];
-          strcpy(suffix,&arg[iarg][2]);
+        int n = strlen(arg[iarg]);
+        char *suffix = new char[n];
+        strcpy(suffix,&arg[iarg][2]);
 
-          char *ptr = strchr(suffix,'[');
-          if (ptr) {
-            if (suffix[strlen(suffix)-1] != ']')
-              error->all(FLERR,"Illegal fix ave/histo command");
-              argindex[nvalues] = atoi(ptr+1);
-              *ptr = '\0';
-          } else argindex[nvalues] = 0;
+        char *ptr = strchr(suffix,'[');
+        if (ptr) {
+          if (suffix[strlen(suffix)-1] != ']')
+            error->all(FLERR,"Illegal fix ave/histo command");
+            argindex[nvalues] = atoi(ptr+1);
+            *ptr = '\0';
+        } else argindex[nvalues] = 0;
 
-          n = strlen(suffix) + 1;
-          ids[nvalues] = new char[n];
-          strcpy(ids[nvalues],suffix);
-          delete [] suffix;
+        n = strlen(suffix) + 1;
+        ids[nvalues] = new char[n];
+        strcpy(ids[nvalues],suffix);
+        delete [] suffix;
 
-          if (mode == VECTOR && which[nvalues] == COMPUTE &&
-              argindex[nvalues] == 0) {
-            int icompute = modify->find_compute(ids[nvalues]);
-            if (icompute < 0)
-              error->all(FLERR,"Compute ID for fix ave/histo does not exist");
-            
-            if (modify->compute[icompute]->array_flag) {
-              int ncols = modify->compute[icompute]->size_array_cols;
-              argindex[nvalues] = 1;
+        if (mode == VECTOR && which[nvalues] == COMPUTE &&
+            argindex[nvalues] == 0) {
+          int icompute = modify->find_compute(ids[nvalues]);
+          if (icompute < 0)
+            error->all(FLERR,"Compute ID for fix ave/histo does not exist");
+          
+          if (modify->compute[icompute]->array_flag) {
+            int ncols = modify->compute[icompute]->size_array_cols;
+            argindex[nvalues] = 1;
               
-              for (int icol = 1; icol < ncols; icol++) {
-                which[nvalues+icol] = which[nvalues];
-                argindex[nvalues+icol] = icol+1;
-                n = strlen(ids[nvalues]) + 1;
-                ids[nvalues+icol] = new char[n];
-                strcpy(ids[nvalues+icol],ids[nvalues]);
-              }
-              nvalues += ncols-1;
+            for (int icol = 1; icol < ncols; icol++) {
+              which[nvalues+icol] = which[nvalues];
+              argindex[nvalues+icol] = icol+1;
+              n = strlen(ids[nvalues]) + 1;
+              ids[nvalues+icol] = new char[n];
+              strcpy(ids[nvalues+icol],ids[nvalues]);
             }
+            nvalues += ncols-1;
+          }
 
-          } else if (mode == VECTOR && which[nvalues] == FIX &&
-                 argindex[nvalues] == 0) {
-            int ifix = modify->find_fix(ids[nvalues]);
-            if (ifix < 0)
-              error->all(FLERR,"Fix ID for fix ave/histo does not exist");
-            if (modify->fix[ifix]->array_flag) {
-              int ncols = modify->fix[ifix]->size_array_cols;
-              argindex[nvalues] = 1;
-              for (int icol = 1; icol < ncols; icol++) {
-                which[nvalues+icol] = which[nvalues];
-                argindex[nvalues+icol] = icol+1;
-                n = strlen(ids[nvalues]) + 1;
-                ids[nvalues+icol] = new char[n];
-                strcpy(ids[nvalues+icol],ids[nvalues]);
-              }
-              nvalues += ncols-1;
+        } else if (mode == VECTOR && which[nvalues] == FIX &&
+               argindex[nvalues] == 0) {
+          int ifix = modify->find_fix(ids[nvalues]);
+          if (ifix < 0)
+            error->all(FLERR,"Fix ID for fix ave/histo does not exist");
+          if (modify->fix[ifix]->array_flag) {
+            int ncols = modify->fix[ifix]->size_array_cols;
+            argindex[nvalues] = 1;
+            for (int icol = 1; icol < ncols; icol++) {
+              which[nvalues+icol] = which[nvalues];
+              argindex[nvalues+icol] = icol+1;
+              n = strlen(ids[nvalues]) + 1;
+              ids[nvalues+icol] = new char[n];
+              strcpy(ids[nvalues+icol],ids[nvalues]);
             }
+            nvalues += ncols-1;
           }
         }
-      nvalues++;
-      iarg++;
-      }    
+      }
+                       
+    nvalues++;
+    iarg++;
+          
     } else error->all(FLERR,"Illegal fix ave/histo command");
   }
 }
