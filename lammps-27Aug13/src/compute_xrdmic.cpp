@@ -90,8 +90,6 @@ ComputeXRDMIC::ComputeXRDMIC(LAMMPS *lmp, int narg, char **arg) :
   }
   fclose(infile);
   
-  
-  
   // Set defaults for optional args
   lambda = 1.541838;
   Min2Theta = 0.00872664626;
@@ -214,7 +212,7 @@ ComputeXRDMIC::ComputeXRDMIC(LAMMPS *lmp, int narg, char **arg) :
   } 
 
   size_array_rows = nRows;
-  size_array_cols = 5;
+  size_array_cols = 2;
   
   if (me == 0) {
     if (screen)
@@ -255,7 +253,7 @@ ComputeXRDMIC::ComputeXRDMIC(LAMMPS *lmp, int narg, char **arg) :
 
 ComputeXRDMIC::~ComputeXRDMIC()
 {
-        fprintf(screen," Compute XRD Complete 3.\n");
+  fprintf(screen," Compute XRD Complete 3.\n");
   memory->destroy(array);
   delete [] ASFfilename;
 
@@ -265,80 +263,7 @@ ComputeXRDMIC::~ComputeXRDMIC()
 
 void ComputeXRDMIC::init()
 {
-  double dinv2 = 0.0;
-  double r = 0.0;
-  double ang =0.0;
-  int n = 0;
-  int m = 0;
-  double K[3];
-  
-  int starting_row;
-  if (my_mpi_rank < size_array_rows_mod) {
-     starting_row = my_mpi_rank*size_array_rows_loc;
-  }
-  else {
-     starting_row = my_mpi_rank*size_array_rows_loc+size_array_rows_mod;
-  }
 
-  if (LP == 1) {    
-    for (int i = -Knmax[0]; i <= Knmax[0]; i++) {
-      for (int j = -Knmax[1]; j <= Knmax[1]; j++) {
-        for (int k = -Knmax[2]; k <= Knmax[2]; k++) {
-        
-          K[0] = i * dK[0];
-          K[1] = j * dK[1];
-          K[2] = k * dK[2];
-          dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-          if  (4 >= dinv2 * lambda * lambda ) {
-       	    ang = asin(lambda * sqrt(dinv2) / 2);
-            if (ang <= Max2Theta & ang >= Min2Theta) {
-               if (n >= starting_row) {
-                  array_loc[m*size_array_cols+0] = K[0];
-                  array_loc[m*size_array_cols+1] = K[1];      
-                  array_loc[m*size_array_cols+2] = K[2];
-                  array_loc[m*size_array_cols+3] = ang;
-                  array_loc[m*size_array_cols+4] = (1 + cos(2*ang) * cos(2*ang)) / 
-                                                   (cos(ang) *sin(ang) * sin(ang));
-                  m++;
-               }
-               n++;
-               if (n >= starting_row+size_array_rows_loc) {
-                  return;
-               }
-            }
-          }
-        } 
-      } 
-    }
-  } else {
-    for (int i = -Knmax[0]; i <= Knmax[0]; i++) {
-      for (int j = -Knmax[1]; j <= Knmax[1]; j++) {
-        for (int k = -Knmax[2]; k <= Knmax[2]; k++) {
-          K[0] = i * dK[0];
-          K[1] = j * dK[1];
-          K[2] = k * dK[2];
-          dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-          if  (4 >= dinv2 * lambda * lambda ) {
-       	    ang = asin(lambda * sqrt(dinv2) / 2);
-            if (ang <= Max2Theta & ang >= Min2Theta) {
-               if (n >= starting_row) {
-                  array_loc[m*size_array_cols+0] = K[0];
-                  array_loc[m*size_array_cols+1] = K[1];      
-                  array_loc[m*size_array_cols+2] = K[2];
-                  array_loc[m*size_array_cols+3] = ang;
-                  array_loc[m*size_array_cols+4] = 1; 
-                  m++;
-               }
-               n++;
-               if (n >= starting_row+size_array_rows_loc) {
-                  return;
-               }
-            }
-          }
-        } 
-      } 
-    }
-  }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -347,10 +272,10 @@ void ComputeXRDMIC::compute_array()
 {
   invoked_array = update->ntimestep;
 
-  Fvec1 = new double[size_array_rows_loc];  // Structure factor vector 
-  Fvec2 = new double[size_array_rows_loc];  // Structure factor vector (imaginary)
-                                        // -- Vector entries correspond to 
-                                        //    diffraction angles
+  Fvec1 = new double[size_array_rows_loc]; // Structure factor vector 
+  Fvec2 = new double[size_array_rows_loc]; // Structure factor vector (imaginary)
+                                           // -- Vector entries correspond to 
+                                           //    diffraction angles
  
   ntypes = atom->ntypes;
   nlocal = atom->nlocal;
@@ -405,7 +330,12 @@ char signal_var;
 #else
    printf("After pragma using offload from processor, ntypes=%d\n",ntypes);
 #endif
+  double dinv2 = 0.0;
+  double ang =0.0;
+  int n = 0;
+  int m = 0;
 
+  double K[3];
   double S = 0.0;                       // sin(theta)/lambda -- used to 
                                         // determine atomic structure factor
   double PI = 4.0*atan(1.0);
@@ -417,40 +347,74 @@ char signal_var;
 #pragma omp parallel num_threads(__NUM_THREADS)
    {
 #pragma omp for
-      // looping over all incident angles
-      for (int i = 0; i < size_array_rows_loc; i++) {     
-         Fatom1 = 0.0;
-         Fatom2 = 0.0;
+  // looping over all incident angles
   
-         // Calculate the atomic structre factor by type	
-         S = sin(array_loc[i*size_array_cols+3]) / lambda;    	
-         for (int ii = 0; ii < ntypes; ii++){
-            f[ii] = 0;
-            int C = ii * 9;
-            int D = C+8;
-            while (C < D) {
-               f[ii] += ASF[C] * exp( -1 * ASF[C+1] * S * S);
-               C += 2;
-            }
-            f[ii] += ASF[D];
-         }
+  int starting_row;
+  if (my_mpi_rank < size_array_rows_mod) {
+     starting_row = my_mpi_rank*size_array_rows_loc;
+  }
+  else {
+     starting_row = my_mpi_rank*size_array_rows_loc+size_array_rows_mod;
+  }
+
+    for (int i = -Knmax[0]; i <= Knmax[0]; i++) {
+      for (int j = -Knmax[1]; j <= Knmax[1]; j++) {
+        for (int k = -Knmax[2]; k <= Knmax[2]; k++) {
+        
+          K[0] = i * dK[0];
+          K[1] = j * dK[1];
+          K[2] = k * dK[2];
+          dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
+          if  (4 >= dinv2 * lambda * lambda ) {
+       	    ang = asin(lambda * sqrt(dinv2) / 2);
+            if (ang <= Max2Theta & ang >= Min2Theta) {
+              if (n >= starting_row) {
+              
+                array_loc[i*size_array_cols+0] = ang;
+                
+                Fatom1 = 0.0;
+                Fatom2 = 0.0;
   
-         // Evaluate the structure factor equation -- looping over all atoms
-         for (int ii = 0; ii < nlocal; ii++){
-            if (mask[ii] & groupbit) {
-               typei=type[ii]-1;       
-               Fatom1 += f[typei] * cos(2 * PI * (array_loc[i*size_array_cols+0] * x[3*ii] + 
-                                                  array_loc[i*size_array_cols+1] * x[3*ii+1] +
-                                                  array_loc[i*size_array_cols+2] * x[3*ii+2]));
-               Fatom2 += f[typei] * sin(2 * PI * (array_loc[i*size_array_cols+0] * x[3*ii] + 
-                                                  array_loc[i*size_array_cols+1] * x[3*ii+1] +
-                                                  array_loc[i*size_array_cols+2] * x[3*ii+2]));
+                // Calculate the atomic structre factor by type	
+                S = sin(ang) / lambda;    	
+                for (int ii = 0; ii < ntypes; ii++){
+                  f[ii] = 0;
+                  int C = ii * 9;
+                  int D = C+8;
+                  while (C < D) {
+                    f[ii] += ASF[C] * exp( -1 * ASF[C+1] * S * S);
+                    C += 2;
+                  }
+                  f[ii] += ASF[D];
+                }
+  
+                // Evaluate the structure factor equation -- looping over all atoms
+                for (int ii = 0; ii < nlocal; ii++){
+                  if (mask[ii] & groupbit) {
+                    typei=type[ii]-1;       
+                    Fatom1 += f[typei] * cos(2 * PI * (K[0] * x[3*ii] + 
+                                                       K[1] * x[3*ii+1] +
+                                                       K[2] * x[3*ii+2]));
+                    Fatom2 += f[typei] * sin(2 * PI * (K[0] * x[3*ii] + 
+                                                       K[1] * x[3*ii+1] +
+                                                       K[2] * x[3*ii+2]));
+                  }
+                }
+               
+                Fvec1[i] = Fatom1;
+                Fvec2[i] = Fatom2;              
+                m++;
+              }
+              n++;
+              if (n >= starting_row+size_array_rows_loc) {
+                return;
+              }
             }
-         }
-         Fvec1[i] = Fatom1;
-         Fvec2[i] = Fatom2;
-      }
-   }
+          }
+        } 
+      } 
+    }
+  }
 }  // End of MIC region
 
 #ifdef ENABLE_MIC && __INTEL_OFFLOAD
@@ -494,15 +458,24 @@ char signal_var;
   MPI_Allreduce(Fvec1,scratch1,size_array_rows_loc,MPI_DOUBLE,MPI_SUM,world);
   MPI_Allreduce(Fvec2,scratch2,size_array_rows_loc,MPI_DOUBLE,MPI_SUM,world);
 
-  for (int i = 0; i < size_array_rows_loc; i++) {
-     array_loc[i*size_array_cols+4] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i]) * array_loc[i*size_array_cols+4] / natoms;
+
+  if (LP == 1) {
+    for (int i = 0; i < size_array_rows_loc; i++) {
+       array_loc[i*size_array_cols+1] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i]) 
+                                         * (1 + cos(2*array_loc[i*size_array_cols+0]) 
+                                         * cos(2*array_loc[i*size_array_cols+0])) 
+                                         / (cos(array_loc[i*size_array_cols+0]) * sin(array_loc[i*size_array_cols+0]) * sin(array_loc[i*size_array_cols+0])) / natoms;
+    }
+  } else {
+    for (int i = 0; i < size_array_rows_loc; i++) {
+       array_loc[i*size_array_cols+1] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i])  / natoms;
+    }
   }
+  
+  
   for (int i = 0; i < size_array_rows_loc; i++) {
      array[i][0] = array_loc[i*size_array_cols+0];
      array[i][1] = array_loc[i*size_array_cols+1];
-     array[i][2] = array_loc[i*size_array_cols+2];
-     array[i][3] = array_loc[i*size_array_cols+3];
-     array[i][4] = array_loc[i*size_array_cols+4];
   }
 
   delete [] scratch1;
