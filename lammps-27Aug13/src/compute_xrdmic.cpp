@@ -344,11 +344,6 @@ char signal_var;
   double Fatom1 = 0.0;                  // structure factor per atom
   double Fatom2 = 0.0;                  // structure factor per atom (imaginary)
 
-#pragma omp parallel num_threads(__NUM_THREADS)
-   {
-#pragma omp for
-  // looping over all incident angles
-  
   int starting_row;
   if (my_mpi_rank < size_array_rows_mod) {
      starting_row = my_mpi_rank*size_array_rows_loc;
@@ -357,6 +352,10 @@ char signal_var;
      starting_row = my_mpi_rank*size_array_rows_loc+size_array_rows_mod;
   }
 
+#pragma omp parallel num_threads(__NUM_THREADS)
+   {
+#pragma omp for
+  // looping over all incident angles
     for (int i = -Knmax[0]; i <= Knmax[0]; i++) {
       for (int j = -Knmax[1]; j <= Knmax[1]; j++) {
         for (int k = -Knmax[2]; k <= Knmax[2]; k++) {
@@ -365,7 +364,7 @@ char signal_var;
           K[1] = j * dK[1];
           K[2] = k * dK[2];
           dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-          if  (4 >= dinv2 * lambda * lambda ) {
+          if  (4 >= dinv2 * lambda * lambda && n < starting_row+size_array_rows_loc) {
        	    ang = asin(lambda * sqrt(dinv2) / 2);
             if (ang <= Max2Theta & ang >= Min2Theta) {
               if (n >= starting_row) {
@@ -406,9 +405,6 @@ char signal_var;
                 m++;
               }
               n++;
-              if (n >= starting_row+size_array_rows_loc) {
-                return;
-              }
             }
           }
         } 
