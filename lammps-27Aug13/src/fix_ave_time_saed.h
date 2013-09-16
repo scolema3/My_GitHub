@@ -38,7 +38,6 @@ class FixAveTimeSAED : public Fix {
   double compute_array(int,int);
   void reset_timestep(bigint);
 
-
  private:
   int me,nvalues;
   int nrepeat,nfreq,irepeat;
@@ -82,10 +81,8 @@ class FixAveTimeSAED : public Fix {
   double  c[3];              // Parameters controlling resolution of reciprocal space explored
   double  dR_Ewald;          // Thickness of Ewald sphere slice
   double  prd_inv[3];        // Inverse spacing of unit cell
+ 
 
-  char    *filename;         // user-specified file
-  int     nOutput; 
-  int     Dim[3];
 
 
 
