@@ -1,0 +1,77 @@
+TACC: Starting up job 1705472
+*******************************************************
+ WARNING: Your MPI Environment is :       impi/4.1.0.030
+          Your executable was built with: mvapich2/1.9a2
+*******************************************************
+TACC: Starting parallel tasks...
+LAMMPS (27 Aug 2013 : Diffraction3)
+Lattice spacing in x,y,z = 4.9052 8.49606 13.0062
+Created orthogonal box = (0 0 -26.0124) to (147.156 127.441 156.074)
+  2 by 2 by 4 MPI processor grid
+Created 108000 atoms
+108000 atoms in group 1
+Lattice spacing in x,y,z = 4.9052 8.49606 13.0062
+Created 162000 atoms
+162000 atoms in group 2
+108000 atoms in group cat
+162000 atoms in group ani
+135000 atoms in group upperhalf
+54000 atoms in group catUpperhalf
+81000 atoms in group aniUpperhalf
+67500 atoms in group upperquad
+27000 atoms in group catUpperquad
+40500 atoms in group aniUpperquad
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for X
+Warning: changed valency_val to valency_boc for F
+Warning: changed valency_val to valency_boc for X
+Compute SAED id:SAED, # of atoms:67500, # of relp:1098163
+Reciprocal point spacing in k1,k2,k3 = 0.013591 0.0156935 0.0109838
+Compute SAED id:SAED2, # of atoms:270000, # of relp:1098163
+Reciprocal point spacing in k1,k2,k3 = 0.013591 0.0156935 0.0109838
+Reciprocal point spacing in k1,k2,k3 = 0.013591 0.0156935 0.0109838
+Compute XRD id:XRD, # of atoms:67500, # of relp:1359488
+Reciprocal point spacing in k1,k2,k3 = 0.013591 0.0156935 0.0109838
+Compute XRD id:XRD2, # of atoms:270000, # of relp:1359488
+Setting up run ...
+NVALID0
+Beginning SAED compute
+ . . . . . . . . .
+Finished SAED compute array
+ COMPUTE SAED ---- n = 1098163
+ FIX AVE TIME SAED ---- n = 1098163
+NVALID0
+Beginning SAED compute
+ . . . . . . . . .
+Finished SAED compute array
+ COMPUTE SAED ---- n = 1098163
+ FIX AVE TIME SAED ---- n = 1098163
+slurmd[c558-803]: *** JOB 1705472 CANCELLED AT 2013-09-17T08:55:07 DUE TO TIME LIMIT ***

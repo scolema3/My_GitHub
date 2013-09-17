@@ -1,0 +1,4 @@
+LAMMPS (27 Aug 2013 : Diffraction3)
+variable A string "a_Al2O3_0001"
+log             $A.log
+log             a_Al2O3_0001.log
