@@ -29,13 +29,25 @@
 #include "string.h"
 #include "omp.h"
 
-#ifdef ENABLE_MIC
 #include "offload.h"
-#endif
 
 #include <iostream>
 
-#define __NUM_THREADS 240
+#ifndef __NUM_CPU_THREADS
+#ifndef OMP_NUM_THREADS
+#define __NUM_CPU_THREADS 4
+#else
+#define __NUM_CPU_THREADS OMP_NUM_THREADS
+#endif
+#endif
+
+#ifndef __NUM_MIC_THREADS
+#ifndef MIC_OMP_NUM_THREADS
+#define __NUM_MIC_THREADS 60
+#else
+#define __NUM_MIC_THREADS MIC_OMP_NUM_THREADS
+#endif
+#endif
 
 using namespace LAMMPS_NS;
 using namespace std;
@@ -272,150 +284,178 @@ void ComputeXRDMIC::compute_array()
 {
   invoked_array = update->ntimestep;
 
-  Fvec1 = new double[size_array_rows_loc]; // Structure factor vector 
-  Fvec2 = new double[size_array_rows_loc]; // Structure factor vector (imaginary)
+  double *Fvec1 = new double[size_array_rows_loc]; // Structure factor vector 
+  double *Fvec2 = new double[size_array_rows_loc]; // Structure factor vector (imaginary)
                                            // -- Vector entries correspond to 
                                            //    diffraction angles
  
   ntypes = atom->ntypes;
   nlocal = atom->nlocal;
-  type  = atom->type;
+  int *type  = atom->type;
   int natoms = group->count(igroup);
-  mask = atom->mask;
+  int *mask = atom->mask;
 
-  f = new double[ntypes];        	// atomic structure factor by type
+  double *x = new double [3*nlocal];
+
+  char sig0;
+  double *array_mic = array_loc;
+  double *ASF_mic = ASF;
+  double *store_tmp = new double[4*size_array_rows_loc];
+
+#pragma offload target(mic:0) \
+   nocopy(ASF_mic : length(9*ntypes) alloc_if(1) free_if(0)) \
+   nocopy(array_mic : length(size_array_rows_loc*size_array_cols) alloc_if(1) free_if(0)) \
+   nocopy(mask : length(nlocal) alloc_if(1) free_if(0)) \ 
+   nocopy(x : length(3*nlocal) alloc_if(1) free_if(0)) \
+   nocopy(type : length(nlocal) alloc_if(1) free_if(0)) \
+   nocopy(Fvec1 : length(size_array_rows_loc) alloc_if(1) free_if(0)) \
+   nocopy(Fvec2 : length(size_array_rows_loc) alloc_if(1) free_if(0)) \
+   nocopy(store_tmp : length(4*size_array_rows_loc) alloc_if(1) free_if(0)) signal(&sig0)
+{}
 
   if (me == 0 && echo) {
       if (screen)
-        fprintf(screen,"Computing XRD intensities");
+        fprintf(screen,"Computing XRD intensities\n");
       if (logfile)
-        fprintf(screen,"Computing XRD intensities");
+        fprintf(screen,"Computing XRD intensities\n");
   }
  
   double t0 = MPI_Wtime();
 
-  double *x = new double [3*nlocal];
   for (int ii = 0; ii < nlocal; ii++) {
-      x[ii+0] = atom->x[ii][0];
-      x[ii+1] = atom->x[ii][1];
-      x[ii+2] = atom->x[ii][2];
+     x[ii+0] = atom->x[ii][0];
+     x[ii+1] = atom->x[ii][1];
+     x[ii+2] = atom->x[ii][2];
+  }
+
+   int starting_row;
+   if (my_mpi_rank < size_array_rows_mod) {
+      starting_row = my_mpi_rank*size_array_rows_loc;
+   }
+   else {
+      starting_row = my_mpi_rank*size_array_rows_loc+size_array_rows_mod;
    }
 
+// ========================================
+// The following code is moved from the openMP/MIC
+// region to allow for openMP to run properly
+// ========================================
+   double K[3];
+   double dinv2 = 0.0;
+   double ang =0.0;
+   int mmax = (2*Knmax[0]+1)*(2*Knmax[1]+1)*(2*Knmax[2]+1);
+   int n = 0;
+   for (int m = 0; m < mmax; m++) {
+      int k = m%(2*Knmax[2]+1);
+      int j = (m%((2*Knmax[2]+1)*(2*Knmax[1]+1))-k)/(2*Knmax[2]+1);
+      int i = (m-j*(2*Knmax[2]+1)-k)/((2*Knmax[2]+1)*(2*Knmax[1]+1))-Knmax[0];
+      j = j-Knmax[1];
+      k = k-Knmax[2];
+      K[0] = i * dK[0];
+      K[1] = j * dK[1];
+      K[2] = k * dK[2];
+      dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
+      if  (4 >= dinv2 * lambda * lambda && n < starting_row+size_array_rows_loc) {
+         ang = asin(lambda * sqrt(dinv2) / 2);
+         if (ang <= Max2Theta & ang >= Min2Theta) {
+            store_tmp[4*n] = ang;
+            store_tmp[4*n+1] = K[0];
+            store_tmp[4*n+2] = K[1];
+            store_tmp[4*n+3] = K[2];
+            n++;
+         }
+      }
+   }
+   int nmax = n;
+// ========================================
+
+
+#pragma offload_wait target(mic:0) wait(&sig0)
+
 char signal_var;
-
-#ifdef ENABLE_MIC && __INTEL_OFFLOAD
-
 #pragma offload target(mic:0) \
-   in(lambda) \
-   in(size_array_rows_loc) \
-   in(size_array_cols) \
-   in(nlocal) \
-   in(ntypes) \
-   in(groupbit) \
-   in(x : length(3*nlocal)) \
-   in(ASF : length(9*ntypes)) \
-   in(array_loc : length(size_array_rows_loc*size_array_cols)) \
-   in(mask : length(nlocal)) \ 
-   in(type : length(nlocal)) \
-   out(Fvec1 : length(size_array_rows_loc)) \
-   out(Fvec2 : length(size_array_rows_loc)) \
-   out(f : length(ntypes)) \
+   in(x : length(3*nlocal) alloc_if(0) free_if(1)) \
+   in(ASF_mic : length(9*ntypes) alloc_if(0) free_if(1)) \
+   in(mask : length(nlocal) alloc_if(0) free_if(1)) \ 
+   in(store_tmp : length(4*nmax) alloc_if(0) free_if(1)) \
+   in(type : length(nlocal) alloc_if(0) free_if(1)) \
+   out(array_mic : length(nmax*size_array_cols) alloc_if(0) free_if(1)) \
+   out(Fvec1 : length(nmax) alloc_if(0) free_if(1)) \
+   out(Fvec2 : length(nmax) alloc_if(0) free_if(1)) \
    signal(&signal_var)
-
-#endif
 {  // Start of the MIC region
+
 
 #ifdef __MIC__
    printf("After pragma using offload from coprocessor, ntypes=%d\n",ntypes);
+   omp_set_num_threads(__NUM_MIC_THREADS);
 #else
    printf("After pragma using offload from processor, ntypes=%d\n",ntypes);
+   omp_set_num_threads(__NUM_CPU_THREADS);
 #endif
-  double dinv2 = 0.0;
-  double ang =0.0;
-  int n = 0;
-  int m = 0;
+   int num_threads = omp_get_max_threads();
+   printf("No. of OMP Threads: %d\n",num_threads);
 
-  double K[3];
-  double S = 0.0;                       // sin(theta)/lambda -- used to 
-                                        // determine atomic structure factor
-  double PI = 4.0*atan(1.0);
-  int typei = 0;
+   double PI = 4.0*atan(1.0);
 
-  double Fatom1 = 0.0;                  // structure factor per atom
-  double Fatom2 = 0.0;                  // structure factor per atom (imaginary)
-
-  int starting_row;
-  if (my_mpi_rank < size_array_rows_mod) {
-     starting_row = my_mpi_rank*size_array_rows_loc;
-  }
-  else {
-     starting_row = my_mpi_rank*size_array_rows_loc+size_array_rows_mod;
-  }
-
-#pragma omp parallel num_threads(__NUM_THREADS)
+#pragma omp parallel num_threads(num_threads) // private(Fatom1, Fatom2, typei)
    {
+      double *f = new double[ntypes];    // atomic structure factor by type
+      int typei = 0;
+      double Fatom1 = 0.0;               // structure factor per atom
+      double Fatom2 = 0.0;               // structure factor per atom (imaginary)
+      double K[3];
+      double ang =0.0;
+      double S = 0.0;                    // sin(theta)/lambda -- used to 
+                                         // determine atomic structure factor
+
 #pragma omp for
-  // looping over all incident angles
-    for (int i = -Knmax[0]; i <= Knmax[0]; i++) {
-      for (int j = -Knmax[1]; j <= Knmax[1]; j++) {
-        for (int k = -Knmax[2]; k <= Knmax[2]; k++) {
-        
-          K[0] = i * dK[0];
-          K[1] = j * dK[1];
-          K[2] = k * dK[2];
-          dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-          if  (4 >= dinv2 * lambda * lambda && n < starting_row+size_array_rows_loc) {
-       	    ang = asin(lambda * sqrt(dinv2) / 2);
-            if (ang <= Max2Theta & ang >= Min2Theta) {
-              if (n >= starting_row) {
-              
-                array_loc[i*size_array_cols+0] = ang;
+      for (int n=starting_row; n<nmax; n++) {
+ 
+         ang = store_tmp[4*n];
+         K[0] = store_tmp[4*n+1];
+         K[1] = store_tmp[4*n+2];
+         K[2] = store_tmp[4*n+3];
+
+         array_mic[n*size_array_cols+0] = ang;
                 
-                Fatom1 = 0.0;
-                Fatom2 = 0.0;
-  
-                // Calculate the atomic structre factor by type	
-                S = sin(ang) / lambda;    	
-                for (int ii = 0; ii < ntypes; ii++){
-                  f[ii] = 0;
-                  int C = ii * 9;
-                  int D = C+8;
-                  while (C < D) {
-                    f[ii] += ASF[C] * exp( -1 * ASF[C+1] * S * S);
-                    C += 2;
-                  }
-                  f[ii] += ASF[D];
-                }
-  
-                // Evaluate the structure factor equation -- looping over all atoms
-                for (int ii = 0; ii < nlocal; ii++){
-                  if (mask[ii] & groupbit) {
-                    typei=type[ii]-1;       
-                    Fatom1 += f[typei] * cos(2 * PI * (K[0] * x[3*ii] + 
-                                                       K[1] * x[3*ii+1] +
-                                                       K[2] * x[3*ii+2]));
-                    Fatom2 += f[typei] * sin(2 * PI * (K[0] * x[3*ii] + 
-                                                       K[1] * x[3*ii+1] +
-                                                       K[2] * x[3*ii+2]));
-                  }
-                }
-               
-                Fvec1[i] = Fatom1;
-                Fvec2[i] = Fatom2;              
-                m++;
-              }
-              n++;
+         Fatom1 = 0.0;
+         Fatom2 = 0.0;
+
+         // Calculate the atomic structre factor by type	
+         S = sin(ang) / lambda;    	
+         for (int ii = 0; ii < ntypes; ii++){
+            f[ii] = 0;
+            int C = ii * 9;
+            int D = C+8;
+            while (C < D) {
+               f[ii] += ASF_mic[C] * exp( -1 * ASF_mic[C+1] * S * S);
+               C += 2;
             }
-          }
-        } 
-      } 
-    }
-  }
+            f[ii] += ASF_mic[D];
+         }
+  
+         // Evaluate the structure factor equation -- looping over all atoms
+         for (int ii = 0; ii < nlocal; ii++){
+            typei=type[ii]-1;  // for some strange reason, this line needs to be here instead of below the following if-statement, otherwise MIC gives junk
+            if (mask[ii] & groupbit) {
+               Fatom1 += f[typei] * cos(2 * PI * (K[0] * x[3*ii] + 
+                                                  K[1] * x[3*ii+1] +
+                                                  K[2] * x[3*ii+2]));
+               Fatom2 += f[typei] * sin(2 * PI * (K[0] * x[3*ii] + 
+                                                  K[1] * x[3*ii+1] +
+                                                  K[2] * x[3*ii+2]));
+            }
+         }
+            
+         Fvec1[n] = Fatom1;
+         Fvec2[n] = Fatom2;              
+      } // End of pragma omp for region
+      delete [] f;
+   } // End of pragma omp parallel region
 }  // End of MIC region
 
-#ifdef ENABLE_MIC && __INTEL_OFFLOAD
-
-  // Start of CPU concurrent activity region   
+// Start of CPU concurrent activity region   
   double frac=0.1;
   for (int i = 0; i < size_array_rows_loc; i++) {     
      if ( i >= (frac * size_array_rows_loc) ) {
@@ -428,17 +468,11 @@ char signal_var;
         }
      }    
   } // End of CPU concurrent activity region
-
+  fprintf(screen," .\n");
 #pragma offload_wait target(mic:0) wait(&signal_var)
 
-#endif
-
   double t1 = MPI_Wtime();
-#ifdef ENABLE_MIC && __INTEL_OFFLOAD
-  printf("Time ellapsed in offload region on MIC =%f\n",t1-t0);
-#else
-  printf("Time ellapsed in offload region on CPU =%f\n",t1-t0);
-#endif
+  printf("Time ellapsed during the offload region =%f\n",t1-t0);
 
   if (me == 0 && echo) {
      if (screen)
@@ -447,37 +481,51 @@ char signal_var;
         fprintf(screen," Compute XRD Complete.\n");
   }
 
+// I think size_array_rows_loc here should be replaced by nmax.... -Yang W
   double *scratch1 = new double[size_array_rows_loc];
   double *scratch2 = new double[size_array_rows_loc];
   
   // Sum intensity for each ang-hkl combination across processors
+// I think size_array_rows_loc here should be replaced by nmax.... -Yang W
   MPI_Allreduce(Fvec1,scratch1,size_array_rows_loc,MPI_DOUBLE,MPI_SUM,world);
   MPI_Allreduce(Fvec2,scratch2,size_array_rows_loc,MPI_DOUBLE,MPI_SUM,world);
 
 
-  if (LP == 1) {
-    for (int i = 0; i < size_array_rows_loc; i++) {
-       array_loc[i*size_array_cols+1] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i]) 
-                                         * (1 + cos(2*array_loc[i*size_array_cols+0]) 
-                                         * cos(2*array_loc[i*size_array_cols+0])) 
-                                         / (cos(array_loc[i*size_array_cols+0]) * sin(array_loc[i*size_array_cols+0]) * sin(array_loc[i*size_array_cols+0])) / natoms;
-    }
-  } else {
-    for (int i = 0; i < size_array_rows_loc; i++) {
-       array_loc[i*size_array_cols+1] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i])  / natoms;
-    }
-  }
+  omp_set_num_threads(__NUM_CPU_THREADS);
+  int num_threads = omp_get_max_threads();
+#pragma omp parallel num_threads(num_threads)
+  { // Begin of pragma omp parallel block
+
+// I think size_array_rows_loc here should be replaced by nmax.... -Yang W
+     if (LP == 1) {
+#pragma omp for
+        for (int i = 0; i < size_array_rows_loc; i++) {
+           array_loc[i*size_array_cols+1] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i]) 
+                               * (1 + cos(2*array_loc[i*size_array_cols+0]) 
+                               * cos(2*array_loc[i*size_array_cols+0])) 
+                               / (cos(array_loc[i*size_array_cols+0]) * sin(array_loc[i*size_array_cols+0]) * sin(array_loc[i*size_array_cols+0])) / natoms;
+        }
+     } else {
+#pragma omp for
+        for (int i = 0; i < size_array_rows_loc; i++) {
+           array_loc[i*size_array_cols+1] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i])  / natoms;
+        }
+     }
   
-  
-  for (int i = 0; i < size_array_rows_loc; i++) {
-     array[i][0] = array_loc[i*size_array_cols+0];
-     array[i][1] = array_loc[i*size_array_cols+1];
-  }
+#pragma omp for
+     for (int i = 0; i < size_array_rows_loc; i++) {
+        array[i][0] = array_loc[i*size_array_cols+0];
+        array[i][1] = array_loc[i*size_array_cols+1];
+     }
+
+  } // End of pragma omp parallel block
 
   delete [] scratch1;
   delete [] scratch2;
   delete [] Fvec1;
   delete [] Fvec2;
+  delete [] x;
+  delete [] store_tmp;
 }
 
 /* ----------------------------------------------------------------------

@@ -50,44 +50,23 @@ class ComputeXRDMIC : public Compute {
   int num_mpi_procs;
   int size_array_rows_mod;
 
-#ifdef ENABLE_MIC && __INTEL_OFFLOAD
-
-#pragma offload_attribute(push, target(mic))
+// The following scalables were declared under offload_attribute
   int size_array_rows_loc;
   int ntypes;
   int nlocal;
-  int *type;
-  int *mask;
-  double *x;
-  double *array_loc;
-
-  double *ASF;
-  double lambda;
-  double *Fvec1;
-  double *Fvec2;
-  double *f;
-
-  int size_array_cols;
-  int groupbit;
-#pragma offload_attribute(pop)
-
-#else
-
-  int size_array_rows_loc;
-  int ntypes;
-  int nlocal;
-  int *type;
-  int *mask;
-  double *x;
-  double *array_loc;
-
-  double *ASF;	             // Analytic atomic scattering factor parameters
   double lambda;            // Radiation wavelenght (distance units)
-  double *Fvec1;
-  double *Fvec2;
-  double *f;
 
-#endif
+//int *type;
+//int *mask;
+  double *array_loc;
+  double *ASF;	             // Analytic atomic scattering factor parameters
+//  double *x;
+//double *Fvec1;
+//double *Fvec2;
+  // double *f;
+
+  // int size_array_cols;   // There is no need for this declaration
+  // int groupbit;   // There is no need for this declaration
   
 };
 
