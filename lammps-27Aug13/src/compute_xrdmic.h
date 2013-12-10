@@ -46,27 +46,12 @@ class ComputeXRDMIC : public Compute {
   int     LP;                // Switch to turn on Lorentz-Polarization factor 1=on
   bool    echo;              // echo compute_array progress
 	  
-  int my_mpi_rank;
-  int num_mpi_procs;
-  int size_array_rows_mod;
-
-// The following scalables were declared under offload_attribute
-  int size_array_rows_loc;
   int ntypes;
   int nlocal;
-  double lambda;            // Radiation wavelenght (distance units)
-
-//int *type;
-//int *mask;
-  double *array_loc;
-  double *ASF;	             // Analytic atomic scattering factor parameters
-//  double *x;
-//double *Fvec1;
-//double *Fvec2;
-  // double *f;
-
-  // int size_array_cols;   // There is no need for this declaration
-  // int groupbit;   // There is no need for this declaration
+  double lambda;             // Radiation wavelenght (distance units)
+  double *ASF;               // Analytic atomic scattering factor parameters
+  int radflag;
+  int *store_tmp;
   
 };
 

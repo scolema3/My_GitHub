@@ -31,16 +31,17 @@
 #include "math.h"
 #include "domain.h"
 
+#include <stdio.h>
 #include <iostream>
 
 using namespace std;
-
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
 enum{COMPUTE};
 enum{ONE,RUNNING,WINDOW};
 enum{SCALAR,VECTOR};
+enum{FIRST,MULTI};
 
 #define INVOKED_SCALAR 1
 #define INVOKED_VECTOR 2
@@ -95,7 +96,7 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
       char *ptr = strchr(suffix,'[');
       if (ptr) {
         if (suffix[strlen(suffix)-1] != ']')
-          error->all(FLERR,"Illegal fix ave/time command");
+          error->all(FLERR,"Illegal fix ave/time/saed command");
         argindex[nvalues] = atoi(ptr+1);
         *ptr = '\0';
       } else argindex[nvalues] = 0;
@@ -109,7 +110,7 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
           argindex[nvalues] == 0) {
         int icompute = modify->find_compute(ids[nvalues]);
         if (icompute < 0)
-          error->all(FLERR,"Compute ID for fix ave/time does not exist");
+          error->all(FLERR,"Compute ID for fix ave/time/saed does not exist");
         if (modify->compute[icompute]->array_flag) {
           int ncols = modify->compute[icompute]->size_array_cols;
           maxvalues += ncols-1;
@@ -185,129 +186,6 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
   } else column = NULL;
 
 
- // SAED specific paramaters needed
-
-  int *periodicity = domain->periodicity;
-  // Zone flag to capture entire recrocal space volume
-  if (  (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
-  } else {
-
-      R_Ewald = (1 / lambda);
-      double Rnorm = R_Ewald/ sqrt(Zone[0] * Zone[0] +
-                     Zone[1] * Zone[1] +  Zone[2]* Zone[2]);
-      Zone[0] = Zone[0] * Rnorm;
-      Zone[1] = Zone[1] * Rnorm;
-      Zone[2] = Zone[2] * Rnorm;
-  }
-
-  double *prd;
-  double ave_inv = 0.0;
-  prd = domain->prd;
-
-  if (periodicity[0]){
-    prd_inv[0] = 1 / prd[0];
-    ave_inv += prd_inv[0];
-  }
-  if (periodicity[1]){
-    prd_inv[1] = 1 / prd[1];
-    ave_inv += prd_inv[1];
-  }
-  if (periodicity[2]){
-    prd_inv[2] = 1 / prd[2];
-    ave_inv += prd_inv[2];
-  }
- 
-  // Using the average inverse dimensions for non-periodic direction
-  ave_inv = ave_inv / (periodicity[0] + periodicity[1] + periodicity[2]);
-  if (!periodicity[0]){
-    prd_inv[0] = ave_inv;
-  }
-  if (!periodicity[1]){
-    prd_inv[1] = ave_inv;
-  }
-  if (!periodicity[2]){
-    prd_inv[2] = ave_inv;
-  }
-
-  // Find integer dimensions of the reciprocal lattice box bounds
-  if ( (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
-    for (int i=0; i<3; i++) {
-      dK[i] = prd_inv[i]*c[i];
-      Knmax[i] = ceil(Kmax / dK[i]);
-      Knmin[i] = -Knmax[i];
-    } 
-  } else {
- 
-    for (int i=0; i<3; i++) {
-      Knmax[i] = -10000;
-      Knmin[i] =  10000;
-    }       
-    double dinv2 = 0.0;
-    double r = 0.0;
-    double K[3];
-    int Ksearch[3];
-    for (int i=0; i<3; i++) {
-      dK[i] = prd_inv[i]*c[i];
-      Ksearch[i] = ceil(Kmax / dK[i]);
-    } 
-    
-    for (int k = -Ksearch[2]; k <= Ksearch[2]; k++) {
-      for (int j = -Ksearch[1]; j <= Ksearch[1]; j++) {
-        for (int i = -Ksearch[0]; i <= Ksearch[0]; i++) {
-          K[0] = i * dK[0];
-          K[1] = j * dK[1];
-          K[2] = k * dK[2];
-          dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-          if (dinv2 < Kmax * Kmax) {
-
-            r=0.0;
-            for (int m=0; m<3; m++) r += pow(K[m] - Zone[m],2.0);
-            r = sqrt(r);     
-            if  ( (r >  (R_Ewald - dR_Ewald) ) && (r < (R_Ewald + dR_Ewald) ) ){
-                
-                if ( i < Knmin[0] ) Knmin[0] = i;
-                if ( j < Knmin[1] ) Knmin[1] = j;
-                if ( k < Knmin[2] ) Knmin[2] = k;                
-                
-                if ( i > Knmax[0] ) Knmax[0] = i;
-                if ( j > Knmax[1] ) Knmax[1] = j;
-                if ( k > Knmax[2] ) Knmax[2] = k; 
-            }
-          }
-        } 
-      }
-    } 
-  }
-
- // Finding dimensions for vtk files
-  int Dim[3];
-  for (int i=0; i<3; i++) {
-    if ( ( (Knmin[i] > 0) && (Knmax[i] > 0) ) || ( (Knmin[i] < 0) && (Knmax[i] < 0) ) ){
-      Dim[i] = abs( (int) Knmin[i] ) + abs( (int) Knmax[i] );
-    } else Dim[i] = abs( (int) Knmin[i] ) + abs( (int) Knmax[i] ) + 1;
-  }
-
-  if (fp && me == 0) {
-    if (mode == VECTOR) {
-      for (int i = 0; i < nvalues; i++) {
-        if (which[i] == COMPUTE) {
-          fprintf(fp,"# vtk DataFile Version 3.0 c_%s\n",ids[i]);
-          fprintf(fp,"Image data set\n");
-          fprintf(fp,"ASCII\n");
-          fprintf(fp,"DATASET STRUCTURED_POINTS\n");
-          fprintf(fp,"DIMENSIONS %d %d %d\n", Dim[0],  Dim[1], Dim[2]);
-          fprintf(fp,"ASPECT_RATIO %g %g %g\n", dK[0], dK[1], dK[2]);
-          fprintf(fp,"ORIGIN %g %g %g\n", Knmin[0] * dK[0],  Knmin[1] * dK[1], Knmin[2] * dK[2]);
-          fprintf(fp,"POINT_DATA %d\n",  Dim[0] *  Dim[1] * Dim[2] );
-          fprintf(fp,"SCALARS intensity float\n");
-          fprintf(fp,"LOOKUP_TABLE default\n");
-        } else break;
-        if (argindex[i]) fprintf(fp,"[%d]",argindex[i]);
-      }
-    }
-    filepos = ftell(fp);
-  }
-
   // allocate memory for averaging
 
   vector = vector_total = NULL;
@@ -363,6 +241,108 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
     }
   }
 
+  if (nOutput == 0) {
+  
+    // SAED specific paramaters needed
+    int *periodicity = domain->periodicity;
+    // Zone flag to capture entire recrocal space volume
+    if (  (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
+    } else {
+        R_Ewald = (1 / lambda);
+        double Rnorm = R_Ewald/ sqrt(Zone[0] * Zone[0] +
+                       Zone[1] * Zone[1] +  Zone[2]* Zone[2]);
+        Zone[0] = Zone[0] * Rnorm;
+        Zone[1] = Zone[1] * Rnorm;
+        Zone[2] = Zone[2] * Rnorm;
+    }
+
+    double *prd;
+    double ave_inv = 0.0;
+    prd = domain->prd;
+
+    if (periodicity[0]){
+      prd_inv[0] = 1 / prd[0];
+      ave_inv += prd_inv[0];
+    }
+    if (periodicity[1]){
+      prd_inv[1] = 1 / prd[1];
+      ave_inv += prd_inv[1];
+    }
+    if (periodicity[2]){
+      prd_inv[2] = 1 / prd[2];
+      ave_inv += prd_inv[2];
+    }
+ 
+    // Using the average inverse dimensions for non-periodic direction
+    ave_inv = ave_inv / (periodicity[0] + periodicity[1] + periodicity[2]);
+    if (!periodicity[0]){
+      prd_inv[0] = ave_inv;
+    }
+    if (!periodicity[1]){
+      prd_inv[1] = ave_inv;
+    }
+    if (!periodicity[2]){
+      prd_inv[2] = ave_inv;
+    }
+
+    // Find integer dimensions of the reciprocal lattice box bounds
+    if ( (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
+      for (int i=0; i<3; i++) {
+        dK[i] = prd_inv[i]*c[i];
+        Knmax[i] = ceil(Kmax / dK[i]);
+        Knmin[i] = -Knmax[i];
+      } 
+    } else {
+
+      for (int i=0; i<3; i++) {
+        Knmax[i] = -10000;
+        Knmin[i] =  10000;
+      }       
+      double dinv2 = 0.0;
+      double r = 0.0;
+      double K[3];
+      int Ksearch[3];
+      for (int i=0; i<3; i++) {
+        dK[i] = prd_inv[i]*c[i];
+        Ksearch[i] = ceil(Kmax / dK[i]);
+      } 
+  
+      for (int k = -Ksearch[2]; k <= Ksearch[2]; k++) {
+        for (int j = -Ksearch[1]; j <= Ksearch[1]; j++) {
+          for (int i = -Ksearch[0]; i <= Ksearch[0]; i++) {
+            K[0] = i * dK[0];
+            K[1] = j * dK[1];
+            K[2] = k * dK[2];
+            dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
+            if (dinv2 < Kmax * Kmax) {
+
+              r=0.0;
+              for (int m=0; m<3; m++) r += pow(K[m] - Zone[m],2.0);
+              r = sqrt(r);     
+              if  ( (r >  (R_Ewald - dR_Ewald) ) && (r < (R_Ewald + dR_Ewald) ) ){
+                
+                if ( i < Knmin[0] ) Knmin[0] = i;
+                if ( j < Knmin[1] ) Knmin[1] = j;
+                if ( k < Knmin[2] ) Knmin[2] = k;                
+                
+                if ( i > Knmax[0] ) Knmax[0] = i;
+                if ( j > Knmax[1] ) Knmax[1] = j;
+                if ( k > Knmax[2] ) Knmax[2] = k; 
+              }
+            }
+          } 
+        }
+      } 
+    }
+
+    // Finding dimensions for vtk files
+    for (int i=0; i<3; i++) {
+      if ( ( (Knmin[i] > 0) && (Knmax[i] > 0) ) || ( (Knmin[i] < 0) && (Knmax[i] < 0) ) ){
+        Dim[i] = abs( (int) Knmin[i] ) + abs( (int) Knmax[i] );
+      } else Dim[i] = abs( (int) Knmin[i] ) + abs( (int) Knmax[i] ) + 1;
+    }
+  }
+
   // initializations
   // set vector_total/array_total to zero since it accumulates
 
@@ -404,6 +384,7 @@ FixAveTimeSAED::~FixAveTimeSAED()
   memory->destroy(array);
   memory->destroy(array_total);
   memory->destroy(array_list);
+  
 }
 
 /* ---------------------------------------------------------------------- */
@@ -413,6 +394,7 @@ int FixAveTimeSAED::setmask()
   int mask = 0;
   mask |= END_OF_STEP;
   return mask;
+  
 }
 
 /* ---------------------------------------------------------------------- */
@@ -446,6 +428,7 @@ void FixAveTimeSAED::init()
 
 void FixAveTimeSAED::setup(int vflag)
 {
+
   end_of_step();
 }
 
@@ -456,16 +439,27 @@ void FixAveTimeSAED::end_of_step()
   // skip if not step which requires doing something
 
   bigint ntimestep = update->ntimestep;
-  if (ntimestep != nvalid) return;
 
+  if (me == 0) {
+  cout << "NVALID" << nvalid << endl;
+  }
+
+
+  if (ntimestep != nvalid) {
+  
+  if (me == 0) {
+  cout << "OTHER" << ntimestep << endl;
+  }
+  return;
+  }
   invoke_vector(ntimestep);
 }
 
 /* ---------------------------------------------------------------------- */
 
-
 void FixAveTimeSAED::invoke_vector(bigint ntimestep)
 {
+
   int i,j,m;
   // zero if first step
 
@@ -570,6 +564,7 @@ void FixAveTimeSAED::invoke_vector(bigint ntimestep)
     else norm = iwindow;
   }
 
+
   // insure any columns with offcol set are effectively set to last value
 
   for (i = 0; i < nrows; i++)
@@ -579,10 +574,45 @@ void FixAveTimeSAED::invoke_vector(bigint ntimestep)
   // output result to file
 
 
-  if (fp && me == 0) {
+ if (fp && me == 0) {
+
+    if (nOutput > 0) {
+      fclose(fp);  
+
+      char nName [128];
+      sprintf(nName,"%s.%d.vtk",filename,nOutput);
+      fp = fopen(nName,"w");
+
+      if (fp == NULL) {
+        char str[128];
+        sprintf(str,"Cannot open fix ave/time file %s",nName);
+        error->one(FLERR,str);
+      }
+    }
+  
+  
+    for (int i = 0; i < nvalues; i++) {
+      if (which[i] == COMPUTE) {
+        fprintf(fp,"# vtk DataFile Version 3.0 c_%s\n",ids[i]);
+        fprintf(fp,"Image data set\n");
+        fprintf(fp,"ASCII\n");
+        fprintf(fp,"DATASET STRUCTURED_POINTS\n");
+        fprintf(fp,"DIMENSIONS %d %d %d\n", Dim[0],  Dim[1], Dim[2]);
+        fprintf(fp,"ASPECT_RATIO %g %g %g\n", dK[0], dK[1], dK[2]);
+        fprintf(fp,"ORIGIN %g %g %g\n", Knmin[0] * dK[0],  Knmin[1] * dK[1], Knmin[2] * dK[2]);
+        fprintf(fp,"POINT_DATA %d\n",  Dim[0] *  Dim[1] * Dim[2] );
+        fprintf(fp,"SCALARS intensity float\n");
+        fprintf(fp,"LOOKUP_TABLE default\n");
+      } else break;
+      if (argindex[i]) fprintf(fp,"[%d]",argindex[i]);
+    }
+    
+    filepos = ftell(fp);
+ 
+ 
     if (overwrite) fseek(fp,filepos,SEEK_SET);
 
-      // Finding the intersection of the reciprical space and Ewald sphere
+     // Finding the intersection of the reciprical space and Ewald sphere
       int NROW1 = 0;
       int NROW2 = 0;
       double dinv2 = 0.0;
@@ -642,7 +672,13 @@ void FixAveTimeSAED::invoke_vector(bigint ntimestep)
           }
         }
       }
+
+if (me == 0) { if (screen)cout << " FIX AVE TIME SAED ---- n = " << NROW1 << endl;  }
+    
     }
+
+  nOutput++;
+   
 }
 
 /* ----------------------------------------------------------------------
@@ -705,13 +741,24 @@ void FixAveTimeSAED::options(int narg, char **arg)
     if (strcmp(arg[iarg],"file") == 0) {
       if (iarg+2 > narg) error->all(FLERR,"Illegal fix ave/time command");
       if (me == 0) {
-        fp = fopen(arg[iarg+1],"w");
+      
+         nOutput = 0;
+         int n = strlen(arg[iarg+1]) + 1;
+         filename = new char[n];
+         strcpy(filename,arg[iarg+1]);
+
+        char nName [128];
+         sprintf(nName,"%s.%d.vtk",filename,nOutput);
+         fp = fopen(nName,"w");
+
         if (fp == NULL) {
           char str[128];
-          sprintf(str,"Cannot open fix ave/time file %s",arg[iarg+1]);
+          sprintf(str,"Cannot open fix ave/time file %s",nName);
           error->one(FLERR,str);
-        }
+        }    
+        
       }
+      
       iarg += 2;
     } else if (strcmp(arg[iarg],"ave") == 0) {
       if (iarg+2 > narg) error->all(FLERR,"Illegal fix ave/time command");
@@ -802,7 +849,11 @@ void FixAveTimeSAED::options(int narg, char **arg)
   
   if (lambda <= 0 )
     error->all(FLERR,"Compute SAED: lambda must be greater than 0 ");
+
+
+ 
 }
+
 
 /* ----------------------------------------------------------------------
    reallocate vectors for each input value, of length N
