@@ -142,7 +142,10 @@ ComputeXRDMIC::ComputeXRDMIC(LAMMPS *lmp, int narg, char **arg) :
       iarg += 2;
     } else if (strcmp(arg[iarg],"echo") == 0) {
       echo = true;
-      iarg += 1;      
+      iarg += 1;
+    } else if (strcmp(arg[iarg],"manual") == 0) {
+      manual = true;
+      iarg += 1;        
       
     } else error->all(FLERR,"Illegal Compute XRD Command");
   }
@@ -179,12 +182,19 @@ ComputeXRDMIC::ComputeXRDMIC(LAMMPS *lmp, int narg, char **arg) :
   if (!periodicity[2]){
   prd_inv[2] = ave_inv;
   }
+
+  // Use manual mapping of reciprocal lattice 
+  if (manual) {
+    for (int i=0; i<3; i++) {
+      prd_inv[i] = 1.0;
+    }
+  } 
   
   // Find reprical spacing and integer dimensions
   for (int i=0; i<3; i++) {
     dK[i] = prd_inv[i]*c[i];
     Knmax[i] = ceil(Kmax / dK[i]);
-  }  
+  } 
   
     // Finding the intersection of the reciprical space and Ewald sphere
   int nRows = 0;
@@ -223,6 +233,8 @@ ComputeXRDMIC::ComputeXRDMIC(LAMMPS *lmp, int narg, char **arg) :
   }  
    
   memory->create(array,size_array_rows,size_array_cols,"xrd:array");
+//  store_tmp = new int[3*size_array_rows];
+  memory->create(store_tmp,3*size_array_rows,"xrd:store_tmp");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -231,7 +243,8 @@ ComputeXRDMIC::~ComputeXRDMIC()
 {
   memory->destroy(array);
   delete [] ASFfilename;
-  delete [] store_tmp;
+//  delete [] store_tmp;
+  memory->destroy(store_tmp);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -239,7 +252,6 @@ ComputeXRDMIC::~ComputeXRDMIC()
 void ComputeXRDMIC::init()
 {
 
-  store_tmp = new int[3*size_array_rows];
   int mmax = (2*Knmax[0]+1)*(2*Knmax[1]+1)*(2*Knmax[2]+1);
   double K[3];
   double dinv2 = 0.0;

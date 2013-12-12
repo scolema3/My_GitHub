@@ -124,7 +124,10 @@ ComputeSAEDMIC::ComputeSAEDMIC(LAMMPS *lmp, int narg, char **arg) :
     } else if (strcmp(arg[iarg],"echo") == 0) {
       echo = true;
       iarg += 1;
-            
+    } else if (strcmp(arg[iarg],"manual") == 0) {
+      manual = true;
+      iarg += 1;        
+                
     } else error->all(FLERR,"Illegal Compute SAED Command");
   }
   
@@ -170,13 +173,20 @@ ComputeSAEDMIC::ComputeSAEDMIC(LAMMPS *lmp, int narg, char **arg) :
   if (!periodicity[2]){
     prd_inv[2] = ave_inv;
   }
+
+  // Use manual mapping of reciprocal lattice 
+  if (manual) {
+    for (int i=0; i<3; i++) {
+      prd_inv[i] = 1.0;
+    }
+  } 
   
   // Find reprical spacing and integer dimensions
   for (int i=0; i<3; i++) {
     dK[i] = prd_inv[i]*c[i];
     Knmax[i] = ceil(Kmax / dK[i]);
   }
-  
+ 
   // Finding the intersection of the reciprical space and Ewald sphere
   int n = 0;
   double dinv2 = 0.0;
@@ -229,7 +239,8 @@ ComputeSAEDMIC::ComputeSAEDMIC(LAMMPS *lmp, int narg, char **arg) :
   nRows = n;
   size_vector = n;
   memory->create(vector,size_vector,"saedmic:vector");
-
+//  store_tmp = new int[3 * nRows];
+  memory->create(store_tmp,3*size_vector,"saed:store_tmp");
 }
 
 /* ---------------------------------------------------------------------- */
@@ -238,7 +249,8 @@ ComputeSAEDMIC::~ComputeSAEDMIC()
 {
   memory->destroy(vector);
   delete ztype;
-  delete [] store_tmp;
+ // delete [] store_tmp;
+  memory->destroy(store_tmp);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -246,7 +258,7 @@ ComputeSAEDMIC::~ComputeSAEDMIC()
 void ComputeSAEDMIC::init()
 {
 
-  store_tmp = new int[3 * nRows];
+
   double dinv2, r;
   double K[3];
   int n = 0;

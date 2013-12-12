@@ -40,9 +40,10 @@ class ComputeSAEDMIC : public Compute {
   double  dR_Ewald;          // Thickness of Ewald sphere slice
   double  prd_inv[3];        // Inverse spacing of unit cell
   bool    echo;              // echo compute_array progress
+  bool    manual;            // Turn on manual recpiprocal map
   double  *f;
 
-  int     nRows;       // Number of relp explored
+  int     nRows;             // Number of relp explored
 
   double  Zone[3];           // Zone axis to view SAEDMIC
   double  R_Ewald;           // Radius of Ewald sphere (distance units)

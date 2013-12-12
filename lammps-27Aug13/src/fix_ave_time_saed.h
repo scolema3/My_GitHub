@@ -33,9 +33,7 @@ class FixAveTimeSAED : public Fix {
   void init();
   void setup(int);
   void end_of_step();
-  double compute_scalar();
   double compute_vector(int);
-  double compute_array(int,int);
   void reset_timestep(bigint);
 
 
@@ -43,32 +41,25 @@ class FixAveTimeSAED : public Fix {
   int me,nvalues;
   int nrepeat,nfreq,irepeat;
   bigint nvalid;
-  int *which,*argindex,*value2index,*offcol;
-  char **ids;
+  int which;
+  char *ids;
   FILE *fp;
   int nrows;
 
-  int ave,nwindow,nsum,startstep,mode;
-  int noff,overwrite;
-  int *offlist;
-  char *title1,*title2,*title3;
+  int ave,nwindow,nsum,startstep;
+  int overwrite;
   long filepos;
 
   int norm,iwindow,window_limit;
   double *vector;
   double *vector_total;
   double **vector_list;
-  double *column;
-  double **array;
-  double **array_total;
-  double ***array_list;
 
   void invoke_scalar(bigint);
   void invoke_vector(bigint);
   void options(int, char **);
-  void allocate_values(int);
-  bigint nextvalid();
 
+  bigint nextvalid();
 
   double  Zone[3];           // Zone axis to view SAED
   double  R_Ewald;           // Radius of Ewald sphere (distance units)
@@ -86,12 +77,7 @@ class FixAveTimeSAED : public Fix {
   char    *filename;         // user-specified file
   int     nOutput; 
   int     Dim[3];
-
-
-
-
-
-
+  bool    manual;            // Turn on manual recpiprocal map
 
 };
 

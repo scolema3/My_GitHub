@@ -45,6 +45,7 @@ class ComputeXRDMIC : public Compute {
   double  prd_inv[3];        // Inverse spacing of unit cell
   int     LP;                // Switch to turn on Lorentz-Polarization factor 1=on
   bool    echo;              // echo compute_array progress
+  bool    manual;            // Turn on manual recpiprocal map
 	  
   int ntypes;
   int nlocal;
