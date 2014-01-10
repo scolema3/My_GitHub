@@ -53,8 +53,8 @@ radiation of wavelength lambda.
 The electron diffraction intensity I at each reciprocal lattice point 
 is computed from the the structure factor F using the equations:
 
-:c,image(Eqs/compute_xrd1.jpg) // I=F*F
-:c,image(Eqs/compute_xrd2.jpg) // F=sum()
+:c,image(Eqs/compute_saed1.jpg) 
+:c,image(Eqs/compute_saed2.jpg)
 
 Here, K is the location of the reciprocal lattice node, rj is the 
 postion of each atom, fj are atomic scattering factors.
@@ -93,7 +93,7 @@ for each atom type (type1 type2 ... typeN) and angle of diffraqtion.
 The analytic approximateion is computed using the formula
 "(Brown)"_#Brown:
 
-:c,image(Eqs/compute_xrd3.jpg) // fj=
+:c,image(Eqs/compute_saed3.jpg)
 
 Coeffiecents paramaterized by "(Fox)"_#Fox are assigned for each 
 atom type designating the chemical symbol and charge of each atom 

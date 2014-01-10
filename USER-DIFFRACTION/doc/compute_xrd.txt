@@ -54,10 +54,10 @@ of wavelength lambda.
 The x-ray diffraction intensity I at each reciprocal lattice point 
 is computed from the the structure factor F using the equations:
 
-:c,image(Eqs/compute_xrd1.jpg) // I=F*F
-:c,image(Eqs/compute_xrd2.jpg) // F=sum()
-:c,image(Eqs/compute_xrd3.jpg) // LP=
-:c,image(Eqs/compute_xrd3.jpg) // Theta=
+:c,image(Eqs/compute_xrd1.jpg)
+:c,image(Eqs/compute_xrd2.jpg)
+:c,image(Eqs/compute_xrd3.jpg)
+:c,image(Eqs/compute_xrd4.jpg)
 
 Here, K is the location of the reciprocal lattice node, rj is the 
 postion of each atom, fj are atomic scattering factors, LP is the 
@@ -66,7 +66,8 @@ diffraction.  The Lorentz-polarization factor can be turned off using
 the {LP} switch.
 
 Diffraction intinsities are calculated on a three-dimensional mesh of 
-reciprocal lattice nodes. The mesh spacing is defined either (I)  by the entire simulation domain or (II) manually.
+reciprocal lattice nodes. The mesh spacing is defined either (I) 
+by the entire simulation domain or (II) manually.
 
 For a mesh defined by the simulation domain, a rectilinar grid is 
 constructed with spacing {c}*inv(A) along each reciprocal lattice 
@@ -91,7 +92,7 @@ for each atom type (type1 type2 ... typeN) and angle of diffraqtion.
 The analytic approximateion is computed using the formula
 "(Colliex)"_#Colliex:
 
-:c,image(Eqs/compute_xrd3.jpg) // fj=
+:c,image(Eqs/compute_xrd5.jpg)
 
 Coeffiecents paramaterized by "(Peng)"_#Peng are assigned for each 
 atom type designating the chemical symbol and charge of each atom 
@@ -187,4 +188,3 @@ Volume C: Mathematical and Chemical Tables, 249-429 (2004).
 :link(Peng)
 [(Peng)] Peng, Ren, Dudarev, Whelan, Acta Crystallogr. A, 52, 257-76
 (1996).
-
