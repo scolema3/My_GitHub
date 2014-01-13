@@ -10,10 +10,10 @@ compute saed command :h3
 
 [Syntax:]
 
-compute ID group-ID xrd lambda type1 type2 ... typeN keyword value ... :pre
+compute ID group-ID saed lambda type1 type2 ... typeN keyword value ... :pre
 
 ID, group-ID are documented in "compute"_compute.html command :ulb,l
-xrd = style name of this compute command :l
+saed = style name of this compute command :l
 lambda = wavelength of incident radiation (length units) :l
 type1 type2 ... typeN = chemical symbol of each atom type (see valid 
 options below) :l
