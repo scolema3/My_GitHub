@@ -13,7 +13,7 @@ fix ave/time/saed command :h3
 fix ID group-ID ave/time/saed Nevery Nrepeat Nfreak c_ID attribute args ... keyword args ... :pre
 
 ID, group-ID are documented in "fix"_fix.html command :ulb,l
-ave/time = style name of this fix command :l
+ave/time/saed = style name of this fix command :l
 Nevery = use input values every this many timesteps :l
 Nrepeat = # of times to use input values for calculating averages :l
 Nfreq = calculate averages every this many timesteps :l
@@ -34,17 +34,16 @@ match values from "compute_saed"_compute_saed.html:l
                lattice nodes in the h, k, and l directions respectively
   {manual} = flag to use manual spacing of reciprocal lattice points   
              based on the values of the {c} paramaters :pre
-keyword = {file} or {ave} or {start} or {off}:l
+keyword = {file} or {ave} or {start} or {file} or {overwrite}:l
   {ave} args = {one} or {running} or {window M}
     one = output a new average value every Nfreq steps
     running = output cummulative average of all previous Nfreq steps
     window M = output average of M most recent Nfreq steps
   {start} args = Nstart
     Nstart = start averaging on this timestep
-  {off} arg = M = do not average this value
-    M = value # from 1 to Nvalues
   {file} arg = filename
-    filename = name of file to output time averages to :pre
+    filename = name of file to output time averages to 
+  {overwrite} arg = none = overwrite output file with only latest output :pre
 
 :ule
 
@@ -65,7 +64,7 @@ if no time averaging is done, this command can be used as a convenient
 way to simply output diffraction intensities at a single snapshot.
 
 To produce output in the image data vtk format ghost data is added
-outside the Kmax range of the diffraction compute. The ghost data is 
+outside the {Kmax} range of the diffraction compute. The ghost data is 
 assigned a value of -1 and can be removed setting a minimum isovolume 
 of 0. SAED images can be created by visualizing a spherical slice of the
 data that is centered at R_Ewald*[h k l]/norm([h k l]), where 
@@ -74,6 +73,10 @@ R_Ewald=1/lambda.
 The group specified with this command is ignored. However, note that 
 specified values may represent calculations performed by saed computes
 which store their own "group" definitions.
+
+Fix ave/time/saed is designed to work only with "compute_saed"_compute_saed.txt 
+values.  The attribute values for {lambda}, {Kmax}, {Zone}, {dR_Ewald}, {c} , 
+and {manual} must match the values assigned in the saed computed ID-ed.
 
 compute 3 top saed 0.0251 Al O 
 fix ave/time/saed 1 1 1 c_3 lambda 0.0251 file Al2O3_001.saed
@@ -99,8 +102,12 @@ averaging is done; values are simply generated on timesteps
 
 :line
 
+The output for fix ave/time/saed is a file writen with the 3rd generation
+vtk image data formatting.  The filename assigned by the {file} keyward is 
+appended with _N.vtk where N is an index (0,1,2...) to account for multiple 
+diffraction intensity outputs.
 
-[Output:]
+By default the header contains the following inforamtion (wtih example data):
 
 # vtk DataFile Version 3.0 c_SAED
 Image data set
@@ -113,28 +120,69 @@ SCALARS intensity float
 LOOKUP_TABLE default
 ...data
 
+:line
 
-This compute calculates a global vector.  The length of the vector is 
-the number of reciprocal lattice nodes that are explored by the mesh.  
-The entries of the global vector are the computed diffraction 
-intensities as discribed above.
+Additional optional keywords also affect the operation of this fix.
 
-The vector can be accessed by any command that uses global values
-from a compute as input.  See "this
-section"_Section_howto.html#howto_15 for an overview of LAMMPS output
-options.
+The {ave} keyword determines how the values produced every {Nfreq}
+steps are averaged with values produced on previous steps that were
+multiples of {Nfreq}, before they are accessed by another output
+command or written to a file.
 
-All array values calculated by this compute are "intensive".  
+If the {ave} setting is {one}, then the values produced on timesteps
+that are multiples of {Nfreq} are independent of each other; they are
+output as-is without further averaging.
+
+If the {ave} setting is {running}, then the values produced on
+timesteps that are multiples of {Nfreq} are summed and averaged in a
+cummulative sense before being output.  Each output value is thus the
+average of the value produced on that timestep with all preceding
+values.  This running average begins when the fix is defined; it can
+only be restarted by deleting the fix via the "unfix"_unfix.html
+command, or by re-defining the fix by re-specifying it.
+
+If the {ave} setting is {window}, then the values produced on
+timesteps that are multiples of {Nfreq} are summed and averaged within
+a moving "window" of time, so that the last M values are used to
+produce the output.  E.g. if M = 3 and Nfreq = 1000, then the output
+on step 10000 will be the average of the individual values on steps
+8000,9000,10000.  Outputs on early steps will average over less than M
+values if they are not available.
+
+The {start} keyword specifies what timestep averaging will begin on.
+The default is step 0.  Often input values can be 0.0 at time 0, so
+setting {start} to a larger value can avoid including a 0.0 in a
+running or windowed average.
+
+The {file} keyword allows a filename to be specified.  Every {Nfreq}
+steps, the vector of saed intensity data is written to a new file using 
+the 3rd generation vtk format.  The base of each file is assigned by 
+the {file} keyword and this string is appended with _N.vtk where N is 
+an index (0,1,2...) to account for situations with multiple diffraction
+intensity outputs.
+
+The {overwrite} keyword will continuously overwrite the output file
+with the latest output, so that it only contains one timestep worth of
+output.  This option can only be used with the {ave running} setting.
+
+[Restart, fix_modify, output, run start/stop, minimize info:]
+
+No information about this fix is written to "binary restart
+files"_restart.html.  None of the "fix_modify"_fix_modify.html options
+are relevant to this fix.
+
+No parameter of this fix can be used with the {start/stop} keywords of
+the "run"_run.html command.  This fix is not invoked during "energy
+minimization"_minimize.html.
 
 [Restrictions:] 
 
 The attributes for fix_ave_time_saed must match the values assigned in the
-associated compute_saed command.
+associated "compute_saed"_compute_saed.txt command.
 
 [Related commands:] 
 
-"fix ave/time/saed"_compute_ave_time_saed.html
-"compute xrd"_compute_xrd.html
+"compute_saed"_compute_saed.html
 
 [Default:] 
 

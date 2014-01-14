@@ -95,14 +95,14 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
 
       int icompute = modify->find_compute(ids);
       if (icompute < 0) 
-        error->all(FLERR,"Compute ID for fix ave/time does not exist");
+        error->all(FLERR,"Compute ID for fix ave/time/saed does not exist");
       
       Compute *compute = modify->compute[icompute];
 
       if (compute->vector_flag == 0)
-        error->all(FLERR,"Fix ave/time compute does not calculate a vector");
+        error->all(FLERR,"Fix ave/time/saed compute does not calculate a vector");
       if (compute->extvector != 0) 
-        error->all(FLERR,"Illegal fix ave/time command"); 
+        error->all(FLERR,"Illegal fix ave/time/saed command"); 
         
       int length = modify->compute[icompute]->size_vector;
  
@@ -116,11 +116,11 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
   // for fix inputs, check that fix frequency is acceptable
 
   if (nevery <= 0 || nrepeat <= 0 || nfreq <= 0)
-    error->all(FLERR,"Illegal fix ave/time command");
+    error->all(FLERR,"Illegal fix ave/time/saed command");
   if (nfreq % nevery || (nrepeat-1)*nevery >= nfreq)
-    error->all(FLERR,"Illegal fix ave/time command");
+    error->all(FLERR,"Illegal fix ave/time/saed command");
   if (ave != RUNNING && overwrite)
-    error->all(FLERR,"Illegal fix ave/time command");
+    error->all(FLERR,"Illegal fix ave/time/saed command");
 
   // allocate memory for averaging
 
@@ -128,10 +128,10 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
   vector_list = NULL;
 
   if (ave == WINDOW)
-    memory->create(vector_list,nwindow,nvalues,"ave/time:vector_list");
+    memory->create(vector_list,nwindow,nvalues,"ave/time/saed:vector_list");
 
-  memory->create(vector,nrows,"ave/time:vector");
-  memory->create(vector_total,nrows,"ave/time:vector_total");
+  memory->create(vector,nrows,"ave/time/saed:vector");
+  memory->create(vector_total,nrows,"ave/time/saed:vector_total");
 
   extlist = NULL;
 
@@ -337,7 +337,7 @@ void FixAveTimeSAED::invoke_vector(bigint ntimestep)
 
   int icompute = modify->find_compute(ids);
   if (icompute < 0)
-    error->all(FLERR,"Compute ID for fix ave/time does not exist");
+    error->all(FLERR,"Compute ID for fix ave/time/saed does not exist");
  
   if (irepeat == 0)
     for (int i = 0; i < nrows; i++)
@@ -419,7 +419,7 @@ void FixAveTimeSAED::invoke_vector(bigint ntimestep)
 
       if (fp == NULL) {
         char str[128];
-        sprintf(str,"Cannot open fix ave/time file %s",nName);
+        sprintf(str,"Cannot open fix ave/time/saed file %s",nName);
         error->one(FLERR,str);
       }
     }
