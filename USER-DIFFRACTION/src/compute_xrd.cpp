@@ -156,6 +156,9 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   Kmax = 2 * sin(Max2Theta) / lambda;
  
   // Calculating spacing between reciprical lattice points using the prd
+  if (!periodicity[0] && !periodicity[1] && !periodicity[2] && !manual)
+    error->all(FLERR,"Compute XRD must have at least one periodic boundary unless manual spacing specified");
+
   double *prd;
   double ave_inv = 0.0; 
 

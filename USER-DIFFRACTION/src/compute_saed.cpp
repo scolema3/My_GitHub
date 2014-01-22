@@ -165,6 +165,10 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
 
   // Procedure to determine how many rows are needed given the constraints on 2theta
   // Calculating spacing between reciprical lattice points using the prd
+
+  if (!periodicity[0] && !periodicity[1] && !periodicity[2] && !manual)
+    error->all(FLERR,"Compute SAED must have at least one periodic boundary unless manual spacing specified");
+
   double *prd;
   double ave_inv = 0.0; 
   
