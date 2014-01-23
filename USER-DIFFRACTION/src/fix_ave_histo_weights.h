@@ -13,7 +13,7 @@
 
 #ifdef FIX_CLASS
 
-FixStyle(ave/histo,FixAveHistoWeights)
+FixStyle(ave/histo/weights,FixAveHistoWeights)
 
 #else
 
