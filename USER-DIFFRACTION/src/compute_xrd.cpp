@@ -140,6 +140,8 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
     } else if (strcmp(arg[iarg],"LP") == 0) {
       if (iarg+2 > narg) error->all(FLERR,"Illegal Compute XRD Command");
       LP = atof(arg[iarg+1]);
+      if (LP != 1 || LP != 0) 
+        error->all(FLERR,"Compute XRD: LP must have value of 0 or 1");  
       iarg += 2;
 
     } else if (strcmp(arg[iarg],"echo") == 0) {
@@ -357,6 +359,12 @@ void ComputeXRD::compute_array()
     double lp = 0.0;
 
     if (LP == 1) {
+
+    if (me == 0 && echo) {
+      if (screen)
+        fprintf(screen,"Applying Lorentz Polarization Factor During XRD Calculation\n");
+    }
+
 #pragma omp for
       for (int n = 0; n < size_array_rows; n++) {
         int k = store_tmp[3*n+0];
