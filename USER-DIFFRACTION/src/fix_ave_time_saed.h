@@ -60,6 +60,8 @@ class FixAveTimeSAED : public Fix {
   void options(int, char **);
 
   bigint nextvalid();
+  
+  class ComputeSAED *compute_saed;
 
   double  Zone[3];           // Zone axis to view SAED
   double  R_Ewald;           // Radius of Ewald sphere (distance units)

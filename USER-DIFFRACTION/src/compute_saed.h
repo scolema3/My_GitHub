@@ -32,6 +32,8 @@ class ComputeSAED : public Compute {
   void    init();
   void    compute_vector();
   double  memory_usage();
+//testing  
+  double  saed_var[10];
 
  private:
   int     me;

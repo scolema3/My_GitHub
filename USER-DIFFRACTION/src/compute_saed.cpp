@@ -106,6 +106,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   c[0] = 1; c[1] = 1; c[2] = 1;
   dR_Ewald = 0.01 / 2;
   manual = false;
+  double manual_double=0; 
   echo = false;
 
   // Process optional args
@@ -147,6 +148,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
 
     } else if (strcmp(arg[iarg],"manual") == 0) {
       manual = true;
+      manual_double = 1; 
       iarg += 1;        
                 
     } else error->all(FLERR,"Illegal Compute SAED Command");
@@ -265,6 +267,19 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   size_vector = n;
   memory->create(vector,size_vector,"saed:vector");
   memory->create(store_tmp,3*size_vector,"saed:store_tmp");
+  
+
+  // Create vector of variables to be passed to fix ave/time/saed
+  saed_var[0] = lambda;
+  saed_var[1] = Kmax;
+  saed_var[2] = Zone[0];
+  saed_var[3] = Zone[1];
+  saed_var[4] = Zone[2];
+  saed_var[5] = c[0];
+  saed_var[6] = c[1];
+  saed_var[7] = c[2];
+  saed_var[8] = dR_Ewald;
+  saed_var[9] = manual_double;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -500,5 +515,7 @@ double ComputeSAED::memory_usage()
   bytes += ntypes * sizeof(double); // f
   bytes += 3.0 * nlocal * sizeof(double); // x
   bytes += 3.0 * nRows * sizeof(int); // store_temp
+  
   return bytes;
 }
+

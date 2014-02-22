@@ -22,6 +22,7 @@
 #include "update.h"
 #include "modify.h"
 #include "compute.h"
+#include "compute_saed.h"
 #include "group.h"
 #include "input.h"
 #include "variable.h"
@@ -99,6 +100,27 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
       
       Compute *compute = modify->compute[icompute];
 
+      // Check that specified compute is for SAED
+      compute_saed = (ComputeSAED*) modify->compute[icompute];
+      if (strcmp(compute_saed->style,"saed") != 0)
+        error->all(FLERR,"Fix ave/time/saed has invalid compute assigned");
+
+      // Gather varialbes from specified compute_saed
+      double *saed_var = compute_saed->saed_var;
+      lambda   = saed_var[0];
+      Kmax     = saed_var[1];
+      Zone[0]  = saed_var[2];
+      Zone[1]  = saed_var[3];
+      Zone[2]  = saed_var[4];
+      c[0]     = saed_var[5];
+      c[1]     = saed_var[6];
+      c[2]     = saed_var[7];
+      dR_Ewald = saed_var[8];
+      double manual_double = saed_var[9];
+      manual = false;
+      if (manual_double == 1) manual = true;
+
+      // Standard error check for fix/ave/time
       if (compute->vector_flag == 0)
         error->all(FLERR,"Fix ave/time/saed compute does not calculate a vector");
       if (compute->extvector != 0) 
@@ -270,13 +292,10 @@ FixAveTimeSAED::FixAveTimeSAED(LAMMPS *lmp, int narg, char **arg) :
 
 FixAveTimeSAED::~FixAveTimeSAED()
 {
-
   delete [] extlist;
   memory->destroy(vector);
   memory->destroy(vector_total);
-
   if (fp && me == 0) fclose(fp);
-
 }
 
 /* ---------------------------------------------------------------------- */
@@ -286,7 +305,6 @@ int FixAveTimeSAED::setmask()
   int mask = 0;
   mask |= END_OF_STEP;
   return mask;
-  
 }
 
 /* ---------------------------------------------------------------------- */
@@ -332,9 +350,7 @@ void FixAveTimeSAED::end_of_step()
 
 void FixAveTimeSAED::invoke_vector(bigint ntimestep)
 {
-
   // zero if first step
-
   int icompute = modify->find_compute(ids);
   if (icompute < 0)
     error->all(FLERR,"Compute ID for fix ave/time/saed does not exist");
@@ -503,7 +519,6 @@ void FixAveTimeSAED::invoke_vector(bigint ntimestep)
   nOutput++;   
 }
 
-
 /* ----------------------------------------------------------------------
    return Ith vector value
 ------------------------------------------------------------------------- */
@@ -515,7 +530,6 @@ double FixAveTimeSAED::compute_vector(int i)
   }
   return 0.0;
 }
-
 
 /* ----------------------------------------------------------------------
    parse optional args
@@ -529,11 +543,8 @@ void FixAveTimeSAED::options(int narg, char **arg)
   ave = ONE;
   startstep = 0;
   overwrite = 0;
-  lambda = 0;
-  manual = false; 
 
   // optional args
-
   int iarg = 6 + nvalues;
   while (iarg < narg) {
     if (strcmp(arg[iarg],"file") == 0) {
@@ -576,46 +587,8 @@ void FixAveTimeSAED::options(int narg, char **arg)
     } else if (strcmp(arg[iarg],"overwrite") == 0) {
       overwrite = 1;
       iarg += 1;
-    } else if (strcmp(arg[iarg],"Kmax") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal Compute SAED Command");
-      Kmax = atof(arg[iarg+1]);
-      if (Kmax / 2 <= 0 || Kmax / 2 > 6)
-        error->all(FLERR,"Compute SAED: |K|max/2 must be between 0 and 6 ");
-      iarg += 2;
-    } else if (strcmp(arg[iarg],"Zone") == 0) {
-      if (iarg+4 > narg) error->all(FLERR,"Illegal Compute SAED Command");
-      Zone[0] = atof(arg[iarg+1]);
-      Zone[1] = atof(arg[iarg+2]);
-      Zone[2] = atof(arg[iarg+3]);
-      iarg += 4;
-    } else if (strcmp(arg[iarg],"c") == 0) {
-      if (iarg+4 > narg) error->all(FLERR,"Illegal Compute SAED Command");
-      c[0] = atof(arg[iarg+1]);
-      c[1] = atof(arg[iarg+2]);
-      c[2] = atof(arg[iarg+3]);
-      if (c[0] <= 0 || c[1] <= 0 || c[2] <= 0)
-        error->all(FLERR,"Compute SAED: dKs must be greater than 0");
-      iarg += 4;
-    } else if (strcmp(arg[iarg],"lambda") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal Compute SAED Command");
-      lambda = atof(arg[iarg+1]);
-      if (lambda <= 0 )
-        error->all(FLERR,"Compute SAED: lambda must be greater than 0 ");
-      iarg += 2;
-    } else if (strcmp(arg[iarg],"dR_Ewald") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal Compute SAED Command");
-      dR_Ewald = atof(arg[iarg+1]);
-      if (dR_Ewald < 0)
-        error->all(FLERR,"Compute SAED: dR_Ewald slice must be greater than 0");
-      iarg += 2;
-    } else if (strcmp(arg[iarg],"manual") == 0) {
-      manual = true;
-      iarg += 1;   
     } else error->all(FLERR,"Illegal fix ave/time command");
   }
-  
-  if (lambda <= 0 )
-    error->all(FLERR,"Compute SAED: lambda must be greater than 0 ");
 }
 
 /* ----------------------------------------------------------------------
