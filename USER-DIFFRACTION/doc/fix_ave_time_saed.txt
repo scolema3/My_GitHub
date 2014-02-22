@@ -19,21 +19,6 @@ Nrepeat = # of times to use input values for calculating averages :l
 Nfreq = calculate averages every this many timesteps :l
 c_ID = saed compute ID :l
 
-attribute = {lambda} or {Kmax} or {Zone} or {dR_Ewald} or {c} or {manual} values must 
-match values from "compute_saed"_compute_saed.html:l  
-  {lambda} = wavelength of incident radiation (length units)
-  {Kmax} value = Maximum distance explored from reciprocal space origin 
-                 (inverse length units)
-  {Zone} values = z1 z2 z3
-    z1,z2,z3 = Zone axis of incident radiation. If z1=z2=z3=0 all 
-               reciprocal space will be meshed up to {Kmax}
-  {dR_Ewald} value = Thickness of Ewald sphere slice intercepting 
-                     reciprocal space (inverse length units)
-  {c} values = c1 c2 c3
-    c1,c2,c3 = parameters to adjust the spacing of the reciprocal 
-               lattice nodes in the h, k, and l directions respectively
-  {manual} = flag to use manual spacing of reciprocal lattice points   
-             based on the values of the {c} parameters :pre
 keyword = {file} or {ave} or {start} or {file} or {overwrite}:l
   {ave} args = {one} or {running} or {window M}
     one = output a new average value every Nfreq steps
@@ -52,8 +37,8 @@ keyword = {file} or {ave} or {start} or {file} or {overwrite}:l
 compute 1 all saed 0.0251 Al O Kmax 1.70 Zone 0 0 1 dR_Ewald 0.01 c 0.5 0.5 0.5
 compute 2 all saed 0.0251 Al O Kmax 1.70 Zone 0 0 0 c 0.05 0.05 0.05 manual echo
 
-fix ave/time/saed 1 1 1 c_1 Kmax 1.70 Zone 0 0 1 dR_Ewald 0.01 c 0.5 0.5 0.5 lambda 0.0251 file Al2O3_001.saed
-fix ave/time/saed 1 1 1 c_2 Kmax 1.70 Zone 0 0 0 c 0.05 0.05 0.05 lambda 0.0251 file Al2O3_000.saed :pre
+fix ave/time/saed 1 1 1 c_1 file Al2O3_001.saed
+fix ave/time/saed 1 1 1 c_2 file Al2O3_000.saed :pre
 
 [Description:]
 
@@ -75,11 +60,10 @@ specified values may represent calculations performed by saed computes
 which store their own "group" definitions.
 
 Fix ave/time/saed is designed to work only with "compute_saed"_compute_saed.txt 
-values.  The attribute values for {lambda}, {Kmax}, {Zone}, {dR_Ewald}, {c} , 
-and {manual} must match the values assigned in the saed computed ID-ed.
+values.
 
 compute 3 top saed 0.0251 Al O 
-fix ave/time/saed 1 1 1 c_3 lambda 0.0251 file Al2O3_001.saed
+fix ave/time/saed 1 1 1 c_3 file Al2O3_001.saed
 
 :line
 
@@ -186,7 +170,6 @@ associated "compute_saed"_compute_saed.txt command.
 
 [Default:] 
 
-The attribute defaults are Kmax = 1.70, Zone 1 0 0, c 1 1 1, dR_Ewald = 0.01
 The option defaults are mode = scalar, ave = one, start = 0, no file
 output.
 
