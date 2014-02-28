@@ -80,7 +80,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
 
   // Store radiation wavelength
   lambda = atof(arg[3]);
-  if (lambda <= 0)
+  if (lambda < 0)
     error->all(FLERR,"Compute SAED: Wavelength must be greater than zero");
 
   // Define atom types for atomic scattering factor coefficents
@@ -122,7 +122,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
       }
       if (Min2Theta <= 0) 
         error->all(FLERR,"Minimum 2theta value must be greater than zero");
-      if (Max2Theta > MY_PI ) 
+      if (Max2Theta >= MY_PI ) 
         error->all(FLERR,"Maximum 2theta value must be less than 180 degrees");
       if (Max2Theta-Min2Theta <= 0) 
         error->all(FLERR,"Two-theta range must be greater than zero");
@@ -133,7 +133,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
       c[0] = atof(arg[iarg+1]);
       c[1] = atof(arg[iarg+2]);
       c[2] = atof(arg[iarg+3]);
-      if (c[0] <= 0 || c[1] <= 0 || c[2] <= 0) 
+      if (c[0] < 0 || c[1] < 0 || c[2] < 0) 
         error->all(FLERR,"Compute XRD: c's must be greater than 0");  
       iarg += 4;
       
@@ -158,38 +158,40 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
  
   Kmax = 2 * sin(Max2Theta) / lambda;
  
-  // Calculating spacing between reciprical lattice points using the prd
-  if (!periodicity[0] && !periodicity[1] && !periodicity[2] && !manual)
-    error->all(FLERR,"Compute XRD must have at least one periodic boundary unless manual spacing specified");
+  // Calculating spacing between reciprical lattice points 
+  // Using distance based on periodic repeating distance
+  if (!manual) {  
+    if (!periodicity[0] && !periodicity[1] && !periodicity[2])
+      error->all(FLERR,"Compute SAED must have at least one periodic boundary unless manual spacing specified");
 
-  double *prd;
-  double ave_inv = 0.0; 
+    double *prd;
+    double ave_inv = 0.0; 
+    prd = domain->prd;
 
-  prd = domain->prd;
-  
-  if (periodicity[0]){
-  prd_inv[0] = 1 / prd[0]; 
-  ave_inv += prd_inv[0];
-  } 
-  if (periodicity[1]){
-  prd_inv[1] = 1 / prd[1];
-  ave_inv += prd_inv[1];
-  } 
-  if (periodicity[2]){
-  prd_inv[2] = 1 / prd[2];
-  ave_inv += prd_inv[2];
-  }
+    if (periodicity[0]){
+      prd_inv[0] = 1 / prd[0]; 
+      ave_inv += prd_inv[0];
+    } 
+    if (periodicity[1]){
+      prd_inv[1] = 1 / prd[1];
+      ave_inv += prd_inv[1];
+    } 
+    if (periodicity[2]){
+      prd_inv[2] = 1 / prd[2];
+      ave_inv += prd_inv[2];
+    }
 
-  // Using the average inverse dimensions for non-periodic direction
-  ave_inv = ave_inv / (periodicity[0] + periodicity[1] + periodicity[2]);
-  if (!periodicity[0]){
-  prd_inv[0] = ave_inv; 
-  } 
-  if (!periodicity[1]){
-  prd_inv[1] = ave_inv;
-  } 
-  if (!periodicity[2]){
-  prd_inv[2] = ave_inv;
+    // Using the average inverse dimensions for non-periodic direction
+    ave_inv = ave_inv / (periodicity[0] + periodicity[1] + periodicity[2]);
+    if (!periodicity[0]){
+      prd_inv[0] = ave_inv; 
+    } 
+    if (!periodicity[1]){
+      prd_inv[1] = ave_inv;
+    } 
+    if (!periodicity[2]){
+      prd_inv[2] = ave_inv;
+    }
   }
 
   // Use manual mapping of reciprocal lattice 
@@ -208,7 +210,6 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   // Finding the intersection of the reciprical space and Ewald sphere
   int nRows = 0;
   double dinv2= 0.0;
-  double r = 0.0;
   double ang = 0.0;
   double K[3];
   
@@ -216,13 +217,12 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   for (int i = -Knmax[0]; i <= Knmax[0]; i++) {
     for (int j = -Knmax[1]; j <= Knmax[1]; j++) {
       for (int k = -Knmax[2]; k <= Knmax[2]; k++) {
-        
         K[0] = i * dK[0];
         K[1] = j * dK[1];
         K[2] = k * dK[2];
         dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
         if  (4 >= dinv2 * lambda * lambda ) {
-       	  ang = asin(lambda * sqrt(dinv2) / 2);
+       	  ang = asin(lambda * sqrt(dinv2) * 0.5);
           if (ang <= Max2Theta & ang >= Min2Theta) {
           nRows++;
 	        }
@@ -230,6 +230,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
       } 
     }
   } 
+  
 
   size_array_rows = nRows;
   size_array_cols = 2;
@@ -270,29 +271,28 @@ void ComputeXRD::init()
   }
 
   int n = 0;
-    for (int m = 0; m < mmax; m++) {
-      int k = m%(2*Knmax[2]+1);
-      int j = (m%((2*Knmax[2]+1)*(2*Knmax[1]+1))-k)/(2*Knmax[2]+1);
-      int i = (m-j*(2*Knmax[2]+1)-k)/((2*Knmax[2]+1)*(2*Knmax[1]+1))-Knmax[0];
-      j = j-Knmax[1];
-      k = k-Knmax[2];
-      K[0] = i * dK[0];
-      K[1] = j * dK[1];
-      K[2] = k * dK[2];
-      dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-      if  (4 >= dinv2 * lambda * lambda ) {
-         ang = asin(lambda * sqrt(dinv2) / 2);
-         if (ang <= Max2Theta & ang >= Min2Theta) {
-            store_tmp[3*n] = k;
-            store_tmp[3*n+1] = j;
-            store_tmp[3*n+2] = i;
-            array[n][0] = ang * convf;
-            n++;
-         }
-      }
-   }
-
-  if (n != size_array_rows)  
+  for (int m = 0; m < mmax; m++) {
+    int k = m%(2*Knmax[2]+1);
+    int j = (m%((2*Knmax[2]+1)*(2*Knmax[1]+1))-k)/(2*Knmax[2]+1);
+    int i = (m-j*(2*Knmax[2]+1)-k)/((2*Knmax[2]+1)*(2*Knmax[1]+1))-Knmax[0];
+    j = j-Knmax[1];
+    k = k-Knmax[2];
+    K[0] = i * dK[0];
+    K[1] = j * dK[1];
+    K[2] = k * dK[2];
+    dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
+    if  (4 >= dinv2 * lambda * lambda ) {
+       ang = asin(lambda * sqrt(dinv2) * 0.5);
+       if (ang <= Max2Theta & ang >= Min2Theta) {
+          store_tmp[3*n] = k;
+          store_tmp[3*n+1] = j;
+          store_tmp[3*n+2] = i;
+          array[n][0] = ang * convf;
+          n++;
+       }
+    }
+  }
+ if (n != size_array_rows)  
      error->all(FLERR,"Compute XRD compute_array() rows mismatch");
 
 }
@@ -310,8 +310,7 @@ void ComputeXRD::compute_array()
 
   double t0 = MPI_Wtime();
 
-  double *Fvec1 = new double[size_array_rows]; // Strct factor 
-  double *Fvec2 = new double[size_array_rows]; // Strct factor  (imaginary)
+  double *Fvec = new double[2*size_array_rows]; // Strct factor (real & imaginary)
   // -- Note: array rows correspond to different RELP
  
   ntypes = atom->ntypes;
@@ -321,18 +320,21 @@ void ComputeXRD::compute_array()
   int *mask = atom->mask;
 
   double *x = new double [3*nlocal];
-
+  int nlocalgroup = 0;
   for (int ii = 0; ii < nlocal; ii++) {
+    if (mask[ii] & groupbit) {
      x[3*ii+0] = atom->x[ii][0];
      x[3*ii+1] = atom->x[ii][1];
      x[3*ii+2] = atom->x[ii][2];
+     nlocalgroup++;
+    }
   }
 
 // Setting up OMP
   int nthreads = 1;
+
 #ifdef _OPENMP
   nthreads = comm->nthreads;
-
   if (me == 0 && echo) {
     if (screen)
       fprintf(screen," using %d OMP threads",nthreads);
@@ -350,62 +352,74 @@ void ComputeXRD::compute_array()
   {
     double *f = new double[ntypes];    // atomic structure factor by type
     int typei = 0;
-    double Fatom1 = 0.0;               // structure factor per atom
+    double Fatom1 = 0.0;               // structure factor per atom (real)
     double Fatom2 = 0.0;               // structure factor per atom (imaginary)
-    double S = 0.0;                    // sin(theta)/lambda
+
     double K[3];
     double dinv2 = 0.0;
-    double ang =0.0;
+    double dinv  = 0.0;
+    double SinTheta_lambda  = 0.0;
+    double SinTheta = 0.0;
+    double ang = 0.0;
+    double Cos2Theta = 0.0;
+    double CosTheta = 0.0;
+
     double inners = 0.0;
     double lp = 0.0;
 
     if (LP == 1) {
 
-    if (me == 0 && echo) {
-      if (screen)
-        fprintf(screen,"Applying Lorentz Polarization Factor During XRD Calculation\n");
+    if (me == 0 && echo && screen) {
+#ifdef _OPENMP
+      if (omp_get_thread_num() == 0)
+        fprintf(screen,"Applying Lorentz-Polarization Factor During XRD Calculation\n");
+#endif
+#ifndef _OPENMP
+      fprintf(screen,"Applying Lorentz-Polarization Factor During XRD Calculation\n");
+#endif
     }
 
 #pragma omp for
       for (int n = 0; n < size_array_rows; n++) {
-        int k = store_tmp[3*n+0];
+        int k = store_tmp[3*n];
         int j = store_tmp[3*n+1];
         int i = store_tmp[3*n+2];
         K[0] = i * dK[0];
         K[1] = j * dK[1];
         K[2] = k * dK[2];
+        
         dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-        ang = asin(lambda * sqrt(dinv2) / 2);
+        dinv = sqrt(dinv2);
+        SinTheta_lambda = 0.5*dinv;
+        SinTheta = SinTheta_lambda * lambda; 
+        ang = asin( SinTheta );
+        Cos2Theta = cos( 2 * ang);
+        CosTheta = cos( ang ); 
 
         Fatom1 = 0.0;
         Fatom2 = 0.0;
 
         // Calculate the atomic structre factor by type
-        S = sin(ang) / lambda;
         for (int ii = 0; ii < ntypes; ii++){
           f[ii] = 0;
-          int C = 0;
-          while (C < 8) {
-            f[ii] += ASFXRD[ztype[ii]][C] * exp(-1 * ASFXRD[ztype[ii]][C+1] * S * S);
-            C += 2;
+          for (int C = 0; C < 8 ; C+=2){
+            f[ii] += ASFXRD[ztype[ii]][C] * exp(-1 * ASFXRD[ztype[ii]][C+1] * SinTheta_lambda * SinTheta_lambda );
           }
           f[ii] += ASFXRD[ztype[ii]][8];
         }
 
         // Evaluate the structure factor equation -- looping over all atoms
-        for (int ii = 0; ii < nlocal; ii++){
+        for (int ii = 0; ii < nlocalgroup; ii++){
           typei=type[ii]-1;
-          if (mask[ii] & groupbit) {
-            inners = 2 * MY_PI * (K[0] * x[3*ii+0] + K[1] * x[3*ii+1] +
-                      K[2] * x[3*ii+2]);
-            Fatom1 += f[typei] * cos(inners);
-            Fatom2 += f[typei] * sin(inners);
-          }
+          inners = 2 * MY_PI * (K[0] * x[3*ii] + K[1] * x[3*ii+1] +
+                    K[2] * x[3*ii+2]);
+          Fatom1 += f[typei] * cos(inners);
+          Fatom2 += f[typei] * sin(inners);
         }
-        lp = (1 + cos( 2 * ang ) * cos( 2 * ang )) /
-             ( cos( ang ) * sin ( ang ) * sin( ang ));
-        Fvec1[n] = Fatom1 * lp;
-        Fvec2[n] = Fatom2 * lp;
+        lp = (1 + Cos2Theta * Cos2Theta) /
+             ( CosTheta * SinTheta * SinTheta);
+        Fvec[2*n] = Fatom1 * lp;
+        Fvec[2*n+1] = Fatom2 * lp;
 
         // reporting progress of calculation
         if ( echo ) {
@@ -417,48 +431,45 @@ void ComputeXRD::compute_array()
             }
             m++;
           }
-        }      
+        } 
       } // End of pragma omp for region
 
     } else {
 #pragma omp for
       for (int n = 0; n < size_array_rows; n++) {
-        int k = store_tmp[3*n+0];
+        int k = store_tmp[3*n];
         int j = store_tmp[3*n+1];
         int i = store_tmp[3*n+2];
         K[0] = i * dK[0];
         K[1] = j * dK[1];
         K[2] = k * dK[2];
+       
         dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-        ang = asin(lambda * sqrt(dinv2) / 2);
-
+        dinv = sqrt(dinv2);
+        SinTheta_lambda = 0.5*dinv;
+        
         Fatom1 = 0.0;
         Fatom2 = 0.0;
 
         // Calculate the atomic structre factor by type
-        S = sin(ang) / lambda;
         for (int ii = 0; ii < ntypes; ii++){
           f[ii] = 0;
-          int C = 0;
-          while (C < 8) {
-            f[ii] += ASFXRD[ztype[ii]][C] * exp(-1 * ASFXRD[ztype[ii]][C+1] * S * S);
-            C += 2;
+          for (int C = 0; C < 8 ; C+=2){
+            f[ii] += ASFXRD[ztype[ii]][C] * exp(-1 * ASFXRD[ztype[ii]][C+1] * SinTheta_lambda * SinTheta_lambda );
           }
           f[ii] += ASFXRD[ztype[ii]][8];
         }
 
         // Evaluate the structure factor equation -- looping over all atoms
-        for (int ii = 0; ii < nlocal; ii++){
+        for (int ii = 0; ii < nlocalgroup; ii++){
           typei=type[ii]-1;
-          if (mask[ii] & groupbit) {
-            inners = 2 * MY_PI * (K[0] * x[3*ii+0] + K[1] * x[3*ii+1] +
-                      K[2] * x[3*ii+2]);
-            Fatom1 += f[typei] * cos(inners);
-            Fatom2 += f[typei] * sin(inners);
-          }
+          inners = 2 * MY_PI * (K[0] * x[3*ii] + K[1] * x[3*ii+1] +
+                    K[2] * x[3*ii+2]);
+          Fatom1 += f[typei] * cos(inners);
+          Fatom2 += f[typei] * sin(inners);
         }
-        Fvec1[n] = Fatom1;
-        Fvec2[n] = Fatom2;
+        Fvec[2*n] = Fatom1;
+        Fvec[2*n+1] = Fatom2;
 
         // reporting progress of calculation
         if ( echo ) {
@@ -476,15 +487,13 @@ void ComputeXRD::compute_array()
     delete [] f;
   } // End of pragma omp parallel region
 
-  double *scratch1 = new double[size_array_rows];
-  double *scratch2 = new double[size_array_rows];
+  double *scratch = new double[2*size_array_rows];
 
   // Sum intensity for each ang-hkl combination across processors
-  MPI_Allreduce(Fvec1,scratch1,size_array_rows,MPI_DOUBLE,MPI_SUM,world);
-  MPI_Allreduce(Fvec2,scratch2,size_array_rows,MPI_DOUBLE,MPI_SUM,world);
+  MPI_Allreduce(Fvec,scratch,2*size_array_rows,MPI_DOUBLE,MPI_SUM,world);
 
   for (int i = 0; i < size_array_rows; i++) {
-    array[i][1] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i]) / natoms;
+    array[i][1] = (scratch[2*i] * scratch[2*i] + scratch[2*i+1] * scratch[2*i+1]) / natoms;
   }
 
   double t2 = MPI_Wtime();
@@ -501,10 +510,8 @@ void ComputeXRD::compute_array()
       fprintf(screen," 100%% \nTime ellapsed during compute_xrd = %0.2f sec using %0.2f Mbytes/processor\n-----\n", t2-t0, bytes/1024.0/1024.0);
   }
 
-  delete [] scratch1;
-  delete [] scratch2;
-  delete [] Fvec1;
-  delete [] Fvec2;
+  delete [] scratch;
+  delete [] Fvec;
   delete [] x;
 }
 

@@ -80,7 +80,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
  
   // Store radiation wavelength
   lambda = atof(arg[3]);
-  if (lambda <= 0)
+  if (lambda < 0)
     error->all(FLERR,"Compute SAED: Wavelength must be greater than zero");
 
   // Define atom types for atomic scattering factor coefficents
@@ -115,7 +115,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
     if (strcmp(arg[iarg],"Kmax") == 0) {
       if (iarg+2 > narg) error->all(FLERR,"Illegal Compute SAED Command");
       Kmax = atof(arg[iarg+1]);
-      if (Kmax / 2 <= 0 || Kmax / 2 > 6) 
+      if (Kmax / 2 < 0 || Kmax / 2 > 6) 
         error->all(FLERR,"Compute SAED: |K|max/2 must be between 0 and 6 ");
       iarg += 2;
         
@@ -131,7 +131,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
       c[0] = atof(arg[iarg+1]);
       c[1] = atof(arg[iarg+2]);
       c[2] = atof(arg[iarg+3]);
-      if (c[0] <= 0 || c[1] <= 0 || c[2] <= 0) 
+      if (c[0] < 0 || c[1] < 0 || c[2] < 0) 
         error->all(FLERR,"Compute SAED: dKs must be greater than 0");  
       iarg += 4;
       
@@ -166,39 +166,39 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   }
 
   // Procedure to determine how many rows are needed given the constraints on 2theta
-  // Calculating spacing between reciprical lattice points using the prd
+  // Calculating spacing between reciprical lattice points 
+  // Using distance based on periodic repeating distance
+  if (!manual) {  
+    if (!periodicity[0] && !periodicity[1] && !periodicity[2])
+      error->all(FLERR,"Compute SAED must have at least one periodic boundary unless manual spacing specified");
 
-  if (!periodicity[0] && !periodicity[1] && !periodicity[2] && !manual)
-    error->all(FLERR,"Compute SAED must have at least one periodic boundary unless manual spacing specified");
+    double *prd;
+    double ave_inv = 0.0; 
+    prd = domain->prd;
+    if (periodicity[0]){
+      prd_inv[0] = 1 / prd[0]; 
+      ave_inv += prd_inv[0];
+    } 
+    if (periodicity[1]){
+      prd_inv[1] = 1 / prd[1];
+      ave_inv += prd_inv[1];
+    } 
+    if (periodicity[2]){
+      prd_inv[2] = 1 / prd[2];
+      ave_inv += prd_inv[2];
+    }
 
-  double *prd;
-  double ave_inv = 0.0; 
-  
-  prd = domain->prd;
-  
-  if (periodicity[0]){
-    prd_inv[0] = 1 / prd[0]; 
-    ave_inv += prd_inv[0];
-  } 
-  if (periodicity[1]){
-    prd_inv[1] = 1 / prd[1];
-    ave_inv += prd_inv[1];
-  } 
-  if (periodicity[2]){
-    prd_inv[2] = 1 / prd[2];
-    ave_inv += prd_inv[2];
-  }
-
-  // Using the average inverse dimensions for non-periodic direction
-  ave_inv = ave_inv / (periodicity[0] + periodicity[1] + periodicity[2]);
-  if (!periodicity[0]){
-    prd_inv[0] = ave_inv; 
-  } 
-  if (!periodicity[1]){
-    prd_inv[1] = ave_inv;
-  } 
-  if (!periodicity[2]){
-    prd_inv[2] = ave_inv;
+    // Using the average inverse dimensions for non-periodic direction
+    ave_inv = ave_inv / (periodicity[0] + periodicity[1] + periodicity[2]);
+    if (!periodicity[0]){
+      prd_inv[0] = ave_inv; 
+    } 
+    if (!periodicity[1]){
+      prd_inv[1] = ave_inv;
+    } 
+    if (!periodicity[2]){
+      prd_inv[2] = ave_inv;
+    }
   }
 
   // Use manual mapping of reciprocal lattice 
@@ -216,8 +216,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
  
   // Finding the intersection of the reciprical space and Ewald sphere
   int n = 0;
-  double dinv2 = 0.0;
-  double r = 0.0;
+  double dinv2, r2, EmdR2, EpdR2;
   double K[3];
   
   // Zone flag to capture entire recrocal space volume
@@ -242,11 +241,12 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
           K[2] = k * dK[2];
           dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
           if (dinv2 < Kmax * Kmax) {
-            r=0.0;
+            r2 = 0.0;
             for (int m=0; m<3; m++)
-              r += pow(K[m] - Zone[m],2.0);
-              r = sqrt(r);          
-            if  ( (r >  (R_Ewald - dR_Ewald) ) && (r < (R_Ewald + dR_Ewald) ) ){
+              r2 += pow(K[m] - Zone[m],2.0);
+            EmdR2 = pow(R_Ewald - dR_Ewald,2);
+            EpdR2 = pow(R_Ewald + dR_Ewald,2);          
+            if  ( (r2 >  EmdR2 ) && (r2 < EpdR2 ) ) {
               n++;
             }
           }
@@ -254,7 +254,6 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
       }
     } 
   }
-
 
   if (me == 0) {
     if (screen &&  echo)
@@ -295,9 +294,7 @@ ComputeSAED::~ComputeSAED()
 
 void ComputeSAED::init()
 {
-
-
-  double dinv2, r;
+  double dinv2, r2, EmdR2, EpdR2;
   double K[3];
   int n = 0;
   
@@ -328,11 +325,12 @@ void ComputeSAED::init()
           K[2] = k * dK[2];
           dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
           if (dinv2 < Kmax * Kmax) {
-            r=0.0;
+            r2=0.0;
             for (int m=0; m<3; m++)
-              r += pow(K[m] - Zone[m],2.0);
-            r = sqrt(r);          
-            if  ( (r >  (R_Ewald - dR_Ewald) ) && (r < (R_Ewald + dR_Ewald) ) ) {
+              r2 += pow(K[m] - Zone[m],2.0);
+            EmdR2 = pow(R_Ewald - dR_Ewald,2);
+            EpdR2 = pow(R_Ewald + dR_Ewald,2);          
+            if  ( (r2 >  EmdR2 ) && (r2 < EpdR2 ) ) {
               store_tmp[3*n] = i;
               store_tmp[3*n+1] = j;
               store_tmp[3*n+2] = k;
@@ -343,7 +341,6 @@ void ComputeSAED::init()
       } 
     } 
   }
-
   if (n != nRows)  error->all(FLERR,"Compute SAED Nrows inconsistent");
 
 }
@@ -360,10 +357,8 @@ void ComputeSAED::compute_vector()
   }
 
   double t0 = MPI_Wtime();
-  double *Fvec1 = new double[nRows]; // Strct factor 
-  double *Fvec2 = new double[nRows]; // Strct factor  (imaginary)
+  double *Fvec = new double[2*nRows]; // Strct factor (real & imaginary)
   // -- Note, vector entries correspond to different RELP
-
 
   ntypes = atom->ntypes;
   nlocal = atom->nlocal;
@@ -372,11 +367,14 @@ void ComputeSAED::compute_vector()
   int *mask = atom->mask;
 
   double *x = new double [3*nlocal];
-
+  int nlocalgroup = 0;
   for (int ii = 0; ii < nlocal; ii++) {
+    if (mask[ii] & groupbit) {
      x[3*ii+0] = atom->x[ii][0];
      x[3*ii+1] = atom->x[ii][1];
      x[3*ii+2] = atom->x[ii][2];
+     nlocalgroup++;
+    }
   }
 
  // determining paramater set to use based on maximum S = sin(theta)/lambda
@@ -412,9 +410,9 @@ void ComputeSAED::compute_vector()
     double Fatom2 = 0.0;               // structure factor per atom (imaginary)
     double S = 0.0;                    // sin(theta)/lambda
     double K[3];
-    double r = 0.0; 
     double dinv2 = 0.0;
-    double ang =0.0;
+    double dinv  = 0.0;
+    double SinTheta_lambda = 0.0; 
     double inners = 0.0;
 
 #pragma omp for
@@ -425,36 +423,35 @@ void ComputeSAED::compute_vector()
       K[0] = i * dK[0];
       K[1] = j * dK[1];
       K[2] = k * dK[2];
+      
       dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-      ang = asin(lambda * sqrt(dinv2) / 2);
-
+      dinv = sqrt(dinv2);
+      SinTheta_lambda = 0.5*dinv;
+              
       Fatom1 = 0.0;
       Fatom2 = 0.0;
 
       // Calculate the atomic structre factor by type
-      S = sin(ang) / lambda;
       // determining paramater set to use based on S = sin(theta)/lambda <> 2
       for (int ii = 0; ii < ntypes; ii++){
         f[ii] = 0;
         for (int C = 0; C < 5; C++){
           int D = C + offset;
-          f[ii] += ASFSAED[ztype[ii]][D] * exp(-1*ASFSAED[ztype[ii]][5+D]*S*S);
+          f[ii] += ASFSAED[ztype[ii]][D] * exp(-1*ASFSAED[ztype[ii]][5+D] * SinTheta_lambda * SinTheta_lambda);
         }
       }
 
       // Evaluate the structure factor equation -- looping over all atoms
-      for (int ii = 0; ii < nlocal; ii++){
+      for (int ii = 0; ii < nlocalgroup; ii++){
         typei=type[ii]-1;
-        if (mask[ii] & groupbit) {
-          inners = 2 * MY_PI * (K[0] * x[3*ii+0] + K[1] * x[3*ii+1] +
-                    K[2] * x[3*ii+2]);
-          Fatom1 += f[typei] * cos(inners);
-          Fatom2 += f[typei] * sin(inners);
-        }
+        inners = 2 * MY_PI * (K[0] * x[3*ii+0] + K[1] * x[3*ii+1] +
+                  K[2] * x[3*ii+2]);
+        Fatom1 += f[typei] * cos(inners);
+        Fatom2 += f[typei] * sin(inners);
       }
 
-      Fvec1[n] = Fatom1;
-      Fvec2[n] = Fatom2;
+      Fvec[2*n] = Fatom1;
+      Fvec[2*n+1] = Fatom2;
 
       // reporting progress of calculation
       if ( echo ) {
@@ -466,20 +463,18 @@ void ComputeSAED::compute_vector()
           }
           m++;
         }
-      }      
+      }
     } // End of pragma omp for region
     delete [] f;
   }
 
-  double *scratch1 = new double[nRows];
-  double *scratch2 = new double[nRows];
+  double *scratch = new double[2*nRows];
 
   // Sum intensity for each ang-hkl combination across processors
-  MPI_Allreduce(Fvec1,scratch1,nRows,MPI_DOUBLE,MPI_SUM,world);
-  MPI_Allreduce(Fvec2,scratch2,nRows,MPI_DOUBLE,MPI_SUM,world);
+  MPI_Allreduce(Fvec,scratch,2*nRows,MPI_DOUBLE,MPI_SUM,world);
 
   for (int i = 0; i < nRows; i++) {
-    vector[i] = (scratch1[i] * scratch1[i] + scratch2[i] * scratch2[i]) / natoms;
+    vector[i] = (scratch[2*i] * scratch[2*i] + scratch[2*i+1] * scratch[2*i+1]) / natoms;
   }
 
 
@@ -498,10 +493,8 @@ void ComputeSAED::compute_vector()
   }
 
   delete [] x;  
-  delete [] scratch1;
-  delete [] scratch2;
-  delete [] Fvec1;
-  delete [] Fvec2;
+  delete [] scratch;
+  delete [] Fvec;
 }
 
 /* ----------------------------------------------------------------------
