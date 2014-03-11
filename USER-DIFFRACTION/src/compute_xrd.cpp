@@ -314,11 +314,33 @@ void ComputeXRD::compute_array()
   // -- Note: array rows correspond to different RELP
  
   ntypes = atom->ntypes;
-  nlocal = atom->nlocal;
+  int nlocal = atom->nlocal;
   int *type  = atom->type;
   int natoms = group->count(igroup);
   int *mask = atom->mask;
 
+  nlocalgroup = 0;
+  for (int ii = 0; ii < nlocal; ii++) {
+    if (mask[ii] & groupbit) {
+     nlocalgroup++;
+    }
+  }
+
+  double *xlocal = new double [3*nlocalgroup];
+  int *typelocal = new int [nlocalgroup];
+
+  nlocalgroup = 0;
+  for (int ii = 0; ii < nlocal; ii++) {
+    if (mask[ii] & groupbit) {
+     xlocal[3*nlocalgroup+0] = atom->x[ii][0];
+     xlocal[3*nlocalgroup+1] = atom->x[ii][1];
+     xlocal[3*nlocalgroup+2] = atom->x[ii][2];
+     typelocal[nlocalgroup]=type[ii];
+     nlocalgroup++;
+    }
+  }    
+
+/*
   double *x = new double [3*nlocal];
   int nlocalgroup = 0;
   for (int ii = 0; ii < nlocal; ii++) {
@@ -329,6 +351,7 @@ void ComputeXRD::compute_array()
      nlocalgroup++;
     }
   }
+*/
 
 // Setting up OMP
   int nthreads = 1;
@@ -410,9 +433,9 @@ void ComputeXRD::compute_array()
 
         // Evaluate the structure factor equation -- looping over all atoms
         for (int ii = 0; ii < nlocalgroup; ii++){
-          typei=type[ii]-1;
-          inners = 2 * MY_PI * (K[0] * x[3*ii] + K[1] * x[3*ii+1] +
-                    K[2] * x[3*ii+2]);
+          typei=typelocal[ii]-1;
+          inners = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                    K[2] * xlocal[3*ii+2]);
           Fatom1 += f[typei] * cos(inners);
           Fatom2 += f[typei] * sin(inners);
         }
@@ -462,9 +485,9 @@ void ComputeXRD::compute_array()
 
         // Evaluate the structure factor equation -- looping over all atoms
         for (int ii = 0; ii < nlocalgroup; ii++){
-          typei=type[ii]-1;
-          inners = 2 * MY_PI * (K[0] * x[3*ii] + K[1] * x[3*ii+1] +
-                    K[2] * x[3*ii+2]);
+          typei=typelocal[ii]-1;
+          inners = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                    K[2] * xlocal[3*ii+2]);
           Fatom1 += f[typei] * cos(inners);
           Fatom2 += f[typei] * sin(inners);
         }
@@ -502,7 +525,8 @@ void ComputeXRD::compute_array()
   double bytes = size_array_rows * size_array_cols * sizeof(double); //array
   bytes +=  4.0 * size_array_rows * sizeof(double); //Fvec1 & 2, scratch1 & 2
   bytes += ntypes * sizeof(double); // f
-  bytes += 3.0 * nlocal * sizeof(double); // x
+  bytes += 3.0 * nlocalgroup * sizeof(double); // xlocal
+  bytes += nlocalgroup * sizeof(int); // typelocal
   bytes += 3.0 * size_array_rows * sizeof(int); // store_temp
   
   if (me == 0 && echo) {
@@ -512,7 +536,8 @@ void ComputeXRD::compute_array()
 
   delete [] scratch;
   delete [] Fvec;
-  delete [] x;
+  delete [] xlocal;
+  delete [] typelocal;
 }
 
 /* ----------------------------------------------------------------------
@@ -523,7 +548,8 @@ double ComputeXRD::memory_usage()
 {
   double bytes = size_array_rows * size_array_cols * sizeof(double); //array
   bytes +=  4.0 * size_array_rows * sizeof(double); //Fvec1 & 2, scratch1 & 2
-  bytes += 3.0 * nlocal * sizeof(double); // x
+  bytes += 3.0 * nlocalgroup * sizeof(double); // xlocal
+  bytes += nlocalgroup * sizeof(int); // typelocal
   bytes += ntypes * sizeof(double); // f
   bytes += 3.0 * size_array_rows * sizeof(int); // store_temp
   

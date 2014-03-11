@@ -32,6 +32,7 @@ class ComputeSAED : public Compute {
   void    init();
   void    compute_vector();
   double  memory_usage();
+  double  saed_var[10];
 
  private:
   int     me;
@@ -40,6 +41,7 @@ class ComputeSAED : public Compute {
   double  dR_Ewald;          // Thickness of Ewald sphere slice
   double  prd_inv[3];        // Inverse spacing of unit cell
   bool    echo;              // echo compute_array progress
+  float   ratio;             // Ratio of RELP offloaded to MIC
   bool    manual;            // Turn on manual recpiprocal map
   double  *f;
   int     nRows;             // Number of relp explored
@@ -52,7 +54,7 @@ class ComputeSAED : public Compute {
   double  Kmax;              // Maximum reciprocal distance to explore
 
   int ntypes;
-  int nlocal;
+  int nlocalgroup;
   int *store_tmp;
 
 };

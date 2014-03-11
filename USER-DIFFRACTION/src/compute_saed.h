@@ -54,7 +54,7 @@ class ComputeSAED : public Compute {
   double  Kmax;              // Maximum reciprocal distance to explore
 
   int ntypes;
-  int nlocal;
+  int nlocalgroup;
   int *store_tmp;
 
 };

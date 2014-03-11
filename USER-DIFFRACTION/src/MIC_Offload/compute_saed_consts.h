@@ -53,7 +53,11 @@ const char *SAEDtypeList[SAEDmaxType] = {
                "Cm",      "Bk",      "Cf"};
 
 // list of atomic scattering factor constants for electron diffraction
+#ifdef ENABLE_MIC
+__declspec(target(mic)) const double ASFSAED[SAEDmaxType][20] = {
+#else
 const double ASFSAED[SAEDmaxType][20] = {
+#endif
   /*  Each set of four rows in this file represents a single row in the matrix
       First two rows are constants for 0 < sin(theta)/lambda < 2
       Z-number     A1         A2         A3         A4         A5

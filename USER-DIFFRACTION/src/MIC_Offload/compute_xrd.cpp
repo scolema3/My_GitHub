@@ -92,7 +92,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   int *periodicity = domain->periodicity;
   int triclinic = domain->triclinic;
 
-  // Checking errors
+  // Checking errors specific to the compute
   if (dimension == 2) 
      error->all(FLERR,"Compute XRD does not work with 2d structures");
   if (narg < 4+ntypes) 
@@ -166,6 +166,16 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
       if (iarg+2 > narg) error->all(FLERR,"Illegal Compute XRD Command");
       LP = atof(arg[iarg+1]);
       iarg += 2;
+
+    } else if (strcmp(arg[iarg],"ratio") == 0) {
+      if (iarg+2 > narg) error->all(FLERR,"Illegal Compute XRD Command");
+      ratio = atof(arg[iarg+1]);
+      if (ratio < 0) 
+        error->all(FLERR,"Ratio value must be greater than or equal to zero");
+      if (ratio > 1) 
+        error->all(FLERR,"Ratio value must be less than or equal to one");
+      iarg += 2;
+
 
     } else if (strcmp(arg[iarg],"echo") == 0) {
       echo = true;
@@ -324,7 +334,7 @@ void ComputeXRD::compute_array()
 
   if (me == 0 && echo) {
       if (screen)
-        fprintf(screen,"-----\nComputing XRD intensities");
+        fprintf(screen,"-----\nComputing XRD intensities for %s\n",id);
   }
 
   double t0 = MPI_Wtime();
@@ -332,54 +342,66 @@ void ComputeXRD::compute_array()
   // -- Note: array rows correspond to different RELP
  
   ntypes = atom->ntypes;
-  nlocal = atom->nlocal;
+  int nlocal = atom->nlocal;
   int *type  = atom->type;
   int natoms = group->count(igroup);
   int *mask = atom->mask;
 
-  double *x = new double [3*nlocal];
+  nlocalgroup = 0;
+  for (int ii = 0; ii < nlocal; ii++) {
+    if (mask[ii] & groupbit) {
+     nlocalgroup++;
+    }
+  }
+
+  double *xlocal = new double [3*nlocalgroup];
+  int *typelocal = new int [nlocalgroup];
 
   int *store_omp = store_tmp;
   int *ztype_omp = ztype;
+  
   int size_array_rows_MIC = 0;
+  int size_array_rows_CPU = size_array_rows;
 
   int nthreadMIC = 1;
   int nthreadCPU = 1; 
 
 #ifdef ENABLE_MIC
    char sig0;
-   float MIC2CPU_ratio = 0.90e0;
+   float MIC2CPU_ratio = ratio;
    size_array_rows_MIC = MIC2CPU_ratio*size_array_rows;
+   size_array_rows_CPU = size_array_rows-size_array_rows_MIC;
 
    nthreadMIC = 240;
 
 #pragma offload target(mic:0) \
    nocopy(ztype_omp : length(ntypes) alloc_if(1) free_if(0)) \
-   nocopy(x : length(3*nlocal) alloc_if(1) free_if(0)) \
-   nocopy(mask : length(nlocal) alloc_if(1) free_if(0)) \
-   nocopy(type : length(nlocal) alloc_if(1) free_if(0)) \
+   nocopy(xlocal : length(3*nlocalgroup) alloc_if(1) free_if(0)) \
+   nocopy(typelocal : length(nlocalgroup) alloc_if(1) free_if(0)) \
    nocopy(store_omp : length(3*size_array_rows_MIC) alloc_if(1) free_if(0)) \
    nocopy(Fvec : length(2*size_array_rows_MIC) alloc_if(1) free_if(0)) signal(&sig0)
 { }
 #endif
 // ==========================================================
 
-  int nlocalgroup = 0;
+  nlocalgroup = 0;
   for (int ii = 0; ii < nlocal; ii++) {
     if (mask[ii] & groupbit) {
-     x[3*ii+0] = atom->x[ii][0];
-     x[3*ii+1] = atom->x[ii][1];
-     x[3*ii+2] = atom->x[ii][2];
+     xlocal[3*nlocalgroup+0] = atom->x[ii][0];
+     xlocal[3*nlocalgroup+1] = atom->x[ii][1];
+     xlocal[3*nlocalgroup+2] = atom->x[ii][2];
+     typelocal[nlocalgroup]=type[ii];
      nlocalgroup++;
     }
-  }
+  } 
+  
 
 // Setting up OMP
 #ifdef _OPENMP
   nthreadCPU = comm->nthreads;
   if (me == 0 && echo) {
     if (screen)
-      fprintf(screen," using %d OMP threads on CPU",nthreadCPU);
+      fprintf(screen," - using %d OMP threads on CPU",nthreadCPU);
   }
 #endif
   if (me == 0 && echo) {
@@ -389,35 +411,34 @@ void ComputeXRD::compute_array()
 #endif
       fprintf(screen,"\n");
   }
-  int m = 0;
-  double frac = 0.1;
 
 // ==========================================================
 // The following lines are added ............................
 //     Purpose: To offload calculations to MIC
 // ----------------------------------------------------------
-
-
-printf("size_array_rows_MIC = %d\n",size_array_rows_MIC);
-
+#ifdef ENABLE_MIC
+  if (me == 0 && echo) {
+    printf(" - size_array_rows_MIC = %d  (Ratio=%0.2f) \n",size_array_rows_MIC,ratio);
+  }
+#endif
+  
 #ifdef ENABLE_MIC
 #pragma offload_wait target(mic:0) wait(&sig0)
 char signal_var;
 #pragma offload target(mic:0) \
    in(ztype_omp : length(ntypes) alloc_if(0) free_if(1)) \
-   in(x : length(3*nlocal) alloc_if(0) free_if(1)) \
-   in(mask : length(nlocal) alloc_if(0) free_if(1)) \
-   in(type : length(nlocal) alloc_if(0) free_if(1)) \
+   in(xlocal : length(3*nlocalgroup) alloc_if(0) free_if(1)) \
+   in(typelocal : length(nlocalgroup) alloc_if(0) free_if(1)) \
    in(store_omp : length(3*size_array_rows_MIC) alloc_if(0) free_if(1)) \
    out(Fvec : length(2*size_array_rows_MIC) alloc_if(0) free_if(1)) \
    signal(&signal_var)
 {  // Start of the MIC region
 // omp_set_num_threads(nthreads);
+  if (me == 0 && echo && omp_get_thread_num() == 0) {
    printf("nthreadsCPU = %d\n",nthreadCPU);
    printf("nthreadsMIC = %d\n",nthreadMIC);
    printf("LP = %d\n",LP);
-// printf("outside the parallel region, there are %d openMP thread(s) available\n",omp_get_max_threads());
-// ==========================================================
+   }
 
 #pragma omp parallel num_threads(nthreadMIC)
   {
@@ -438,14 +459,14 @@ char signal_var;
     double inners = 0.0;
     double lp = 0.0;
 
-    if (omp_get_thread_num() == 0) {
+    if (me == 0 && echo && omp_get_thread_num() == 0) {
        printf("Inside the parallel region on MIC, there are %d openMP thread(s) available\n",omp_get_max_threads());
     }
 
     if (LP == 1) {
 #pragma omp for
       for (int n = 0; n < size_array_rows_MIC; n++) {
-        int k = store_omp[3*n+0];
+        int k = store_omp[3*n];
         int j = store_omp[3*n+1];
         int i = store_omp[3*n+2];
         K[0] = i * dK[0];
@@ -474,16 +495,16 @@ char signal_var;
 
         // Evaluate the structure factor equation -- looping over all atoms
         for (int ii = 0; ii < nlocalgroup; ii++){
-            typei=type[ii]-1;
-            inners = 2 * MY_PI * (K[0] * x[3*ii+0] + K[1] * x[3*ii+1] +
-                      K[2] * x[3*ii+2]);
+            typei=typelocal[ii]-1;
+            inners = 2 * MY_PI * (K[0] * xlocal[3*ii+0] + K[1] * xlocal[3*ii+1] +
+                      K[2] * xlocal[3*ii+2]);
             Fatom1 += f[typei] * cos(inners);
             Fatom2 += f[typei] * sin(inners);
         }
         lp = (1 + Cos2Theta * Cos2Theta) /
              ( CosTheta * SinTheta * SinTheta);
 
-        Fvec[2*n+0] = Fatom1 * lp;
+        Fvec[2*n] = Fatom1 * lp;
         Fvec[2*n+1] = Fatom2 * lp;
       } // End of pragma omp for region
 
@@ -515,9 +536,9 @@ char signal_var;
 
         // Evaluate the structure factor equation -- looping over all atoms
         for (int ii = 0; ii < nlocalgroup; ii++){
-          typei=type[ii]-1;
-            inners = 2 * MY_PI * (K[0] * x[3*ii+0] + K[1] * x[3*ii+1] +
-                      K[2] * x[3*ii+2]);
+            typei=typelocal[ii]-1;
+            inners = 2 * MY_PI * (K[0] * xlocal[3*ii+0] + K[1] * xlocal[3*ii+1] +
+                      K[2] * xlocal[3*ii+2]);
             Fatom1 += f[typei] * cos(inners);
             Fatom2 += f[typei] * sin(inners);
         }
@@ -540,6 +561,8 @@ char signal_var;
 
   // Start of CPU concurrent activity region
   double tCPU0 = MPI_Wtime();
+  int m = 0;
+  double frac = 0.1;
 #pragma omp parallel num_threads(nthreadCPU)
   {
     double *f = new double[ntypes];    // atomic structure factor by type
@@ -548,7 +571,6 @@ char signal_var;
     double Fatom2 = 0.0;               // structure factor per atom (imaginary)
     double S = 0.0;                    // sin(theta)/lambda
     double K[3];
-
     double dinv2 = 0.0;
     double dinv  = 0.0;
     double SinTheta_lambda  = 0.0;     // sin(theta)/lambda
@@ -560,13 +582,13 @@ char signal_var;
     double inners = 0.0;
     double lp = 0.0;
 
-    if (omp_get_thread_num() == 0) {
+    if (me == 0 && echo && omp_get_thread_num() == 0) {
        printf("Inside the CPU parallel region, there are %d openMP thread(s) available\n",omp_get_max_threads());
     }
     if (LP == 1) {
 #pragma omp for
       for (int n = size_array_rows_MIC; n < size_array_rows; n++) {
-        int k = store_omp[3*n+0];
+        int k = store_omp[3*n];
         int j = store_omp[3*n+1];
         int i = store_omp[3*n+2];
         K[0] = i * dK[0];
@@ -596,22 +618,22 @@ char signal_var;
 
         // Evaluate the structure factor equation -- looping over all atoms
         for (int ii = 0; ii < nlocalgroup; ii++){
-          typei=type[ii]-1;
-            inners = 2 * MY_PI * (K[0] * x[3*ii+0] + K[1] * x[3*ii+1] +
-                      K[2] * x[3*ii+2]);
+          typei=typelocal[ii]-1;
+            inners = 2 * MY_PI * (K[0] * xlocal[3*ii+0] + K[1] * xlocal[3*ii+1] +
+                      K[2] * xlocal[3*ii+2]);
             Fatom1 += f[typei] * cos(inners);
             Fatom2 += f[typei] * sin(inners);
         }
         lp = (1 + Cos2Theta * Cos2Theta) /
              ( CosTheta * SinTheta * SinTheta);
-        Fvec[2*n+0] = Fatom1 * lp;
+        Fvec[2*n] = Fatom1 * lp;
         Fvec[2*n+1] = Fatom2 * lp;
 
         // reporting progress of calculation
         if ( echo ) {
           #pragma omp critical
           {
-            if ( m == round(frac * size_array_rows) ) {
+            if ( m == round(frac * size_array_rows_CPU) ) {
               if (me == 0 && screen) fprintf(screen," %0.0f%% -",frac*100);
               frac += 0.1;
             }
@@ -623,7 +645,7 @@ char signal_var;
     } else {
 #pragma omp for
       for (int n = size_array_rows_MIC; n < size_array_rows; n++) {
-        int k = store_omp[3*n+0];
+        int k = store_omp[3*n];
         int j = store_omp[3*n+1];
         int i = store_omp[3*n+2];
         K[0] = i * dK[0];
@@ -649,13 +671,13 @@ char signal_var;
 
         // Evaluate the structure factor equation -- looping over all atoms
         for (int ii = 0; ii < nlocalgroup; ii++){
-          typei=type[ii]-1;
-            inners = 2 * MY_PI * (K[0] * x[3*ii+0] + K[1] * x[3*ii+1] +
-                      K[2] * x[3*ii+2]);
+          typei=typelocal[ii]-1;
+            inners = 2 * MY_PI * (K[0] * xlocal[3*ii+0] + K[1] * xlocal[3*ii+1] +
+                      K[2] * xlocal[3*ii+2]);
             Fatom1 += f[typei] * cos(inners);
             Fatom2 += f[typei] * sin(inners);
         }
-        Fvec[2*n+0] = Fatom1;
+        Fvec[2*n] = Fatom1;
         Fvec[2*n+1] = Fatom2;
 
 
@@ -663,7 +685,7 @@ char signal_var;
         if ( echo ) {
           #pragma omp critical
           {
-            if ( m == round(frac * size_array_rows) ) {
+            if ( m == round(frac * size_array_rows_CPU) ) {
               if (me == 0 && screen) fprintf(screen," %0.0f%% -",frac*100 );
               frac += 0.1;
             }
@@ -697,6 +719,8 @@ char signal_var;
 
   delete [] scratch;
   delete [] Fvec;
+  delete [] xlocal;
+  delete [] typelocal;
 // ==========================================================
 
   double t2 = MPI_Wtime();
@@ -705,17 +729,16 @@ char signal_var;
   double bytes = size_array_rows * size_array_cols * sizeof(double); //array
   bytes +=  4.0 * size_array_rows * sizeof(double); //Fvec1 & 2, scratch1 & 2
   bytes += ntypes * sizeof(double); // f
-  bytes += 3.0 * nlocal * sizeof(double); // x
+  bytes += 3.0 * nlocalgroup * sizeof(double); // xlocal
+  bytes += nlocalgroup * sizeof(int); // typelocal
   bytes += 3.0 * size_array_rows * sizeof(int); // store_temp
   
 
   if (me == 0 && echo) {
     if (screen)
-      fprintf(screen,"\nTime ellapsed during compute_xrd = %0.2f sec using %0.2f Mbytes/processor\n-----\n", t2-t0, bytes/1024.0/1024.0);
-      fprintf(screen," \nTime ellapsed Within CPU LOOP = %0.2f ", tCPU1-tCPU0);
+      fprintf(screen," 100%%\nTime ellapsed during compute_xrd = %0.2f sec using %0.2f Mbytes/processor", t2-t0, bytes/1024.0/1024.0);
+      fprintf(screen," \n -time ellapsed within CPU loop = %0.2f sec\n-----\n", tCPU1-tCPU0);
   }
-
-  delete [] x;
 }
 
 /* ----------------------------------------------------------------------
@@ -726,7 +749,8 @@ double ComputeXRD::memory_usage()
 {
   double bytes = size_array_rows * size_array_cols * sizeof(double); //array
   bytes +=  4.0 * size_array_rows * sizeof(double); //Fvec1 & 2, scratch1 & 2
-  bytes += 3.0 * nlocal * sizeof(double); // x
+  bytes += 3.0 * nlocalgroup * sizeof(double); // xlocal
+  bytes += nlocalgroup * sizeof(int); // typelocal
   bytes += ntypes * sizeof(double); // f
   bytes += 3.0 * size_array_rows * sizeof(int); // store_temp
   

@@ -48,7 +48,7 @@ class ComputeXRD : public Compute {
   bool    manual;            // Turn on manual recpiprocal map
 	  
   int ntypes;
-  int nlocal;
+  int nlocalgroup;
   double lambda;             // Radiation wavelenght (distance units)
   int radflag;
   int *store_tmp;

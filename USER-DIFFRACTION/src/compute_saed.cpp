@@ -361,11 +361,33 @@ void ComputeSAED::compute_vector()
   // -- Note, vector entries correspond to different RELP
 
   ntypes = atom->ntypes;
-  nlocal = atom->nlocal;
+  int nlocal = atom->nlocal;
   int *type  = atom->type;
   int natoms = group->count(igroup);
   int *mask = atom->mask;
 
+  nlocalgroup = 0;
+  for (int ii = 0; ii < nlocal; ii++) {
+    if (mask[ii] & groupbit) {
+     nlocalgroup++;
+    }
+  }
+
+  double *xlocal = new double [3*nlocalgroup];
+  int *typelocal = new int [nlocalgroup];
+
+  nlocalgroup = 0;
+  for (int ii = 0; ii < nlocal; ii++) {
+    if (mask[ii] & groupbit) {
+     xlocal[3*nlocalgroup+0] = atom->x[ii][0];
+     xlocal[3*nlocalgroup+1] = atom->x[ii][1];
+     xlocal[3*nlocalgroup+2] = atom->x[ii][2];
+     typelocal[nlocalgroup]=type[ii];
+     nlocalgroup++;
+    }
+  }    
+
+/*
   double *x = new double [3*nlocal];
   int nlocalgroup = 0;
   for (int ii = 0; ii < nlocal; ii++) {
@@ -376,6 +398,8 @@ void ComputeSAED::compute_vector()
      nlocalgroup++;
     }
   }
+*/
+
 
  // determining paramater set to use based on maximum S = sin(theta)/lambda
   double Smax = Kmax / 2;
@@ -443,9 +467,9 @@ void ComputeSAED::compute_vector()
 
       // Evaluate the structure factor equation -- looping over all atoms
       for (int ii = 0; ii < nlocalgroup; ii++){
-        typei=type[ii]-1;
-        inners = 2 * MY_PI * (K[0] * x[3*ii+0] + K[1] * x[3*ii+1] +
-                  K[2] * x[3*ii+2]);
+        typei=typelocal[ii]-1;
+        inners = 2 * MY_PI * (K[0] * xlocal[3*ii+0] + K[1] * xlocal[3*ii+1] +
+                  K[2] * xlocal[3*ii+2]);
         Fatom1 += f[typei] * cos(inners);
         Fatom2 += f[typei] * sin(inners);
       }
@@ -477,14 +501,14 @@ void ComputeSAED::compute_vector()
     vector[i] = (scratch[2*i] * scratch[2*i] + scratch[2*i+1] * scratch[2*i+1]) / natoms;
   }
 
-
   double t2 = MPI_Wtime();
 
   // compute memory usage per processor
   double bytes = nRows * sizeof(double); //vector
   bytes +=  4.0 * nRows * sizeof(double); //Fvec1 & 2, scratch1 & 2
   bytes += ntypes * sizeof(double); // f
-  bytes += 3.0 * nlocal * sizeof(double); // x
+  bytes += 3.0 * nlocalgroup * sizeof(double); // xlocal
+  bytes += nlocalgroup * sizeof(int); // typelocal
   bytes += 3.0 * nRows * sizeof(int); // store_temp
   
   if (me == 0 && echo) {
@@ -492,7 +516,8 @@ void ComputeSAED::compute_vector()
       fprintf(screen," 100%% \nTime ellapsed during compute_saed = %0.2f sec using %0.2f Mbytes/processor\n-----\n", t2-t0,  bytes/1024.0/1024.0);
   }
 
-  delete [] x;  
+  delete [] xlocal;
+  delete [] typelocal; 
   delete [] scratch;
   delete [] Fvec;
 }
@@ -506,7 +531,8 @@ double ComputeSAED::memory_usage()
   double bytes = nRows * sizeof(double); //vector
   bytes +=  4.0 * nRows * sizeof(double); //Fvec1 & 2, scratch1 & 2
   bytes += ntypes * sizeof(double); // f
-  bytes += 3.0 * nlocal * sizeof(double); // x
+  bytes += 3.0 * nlocalgroup * sizeof(double); // xlocal
+  bytes += nlocalgroup * sizeof(int); // typelocal
   bytes += 3.0 * nRows * sizeof(int); // store_temp
   
   return bytes;
