@@ -81,6 +81,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   if (lmp->citeme) lmp->citeme->add(cite_compute_saed_c);
 
   MPI_Comm_rank(world,&me);
+
   int ntypes = atom->ntypes;
   int natoms = group->count(igroup);
   int dimension = domain->dimension;
@@ -94,7 +95,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
     error->all(FLERR,"Illegal Compute SAED Command");
   if (triclinic == 1) 
     error->all(FLERR,"Compute SAED does not work with triclinic structures"); 
-  
+
   vector_flag = 1;
   extvector = 0;
  
@@ -104,19 +105,20 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
     error->all(FLERR,"Compute SAED: Wavelength must be greater than zero");
 
   // Define atom types for atomic scattering factor coefficents
+
   int iarg = 4;
   ztype = new int[ntypes];
   for (int i = 0; i < ntypes; i++){
     ztype[i] = SAEDmaxType + 1;
   }
-  for (int i=0; i<ntypes; i++) {   
-       for(int j = 0; j < SAEDmaxType; j++){
-         if (strcasecmp(arg[iarg],SAEDtypeList[j]) == 0) {
-         ztype[i] = j;
-         }
+  for (int i=0; i<ntypes; i++) {
+    for(int j = 0; j < SAEDmaxType; j++){
+      if (strcasecmp(arg[iarg],SAEDtypeList[j]) == 0) {
+        ztype[i] = j;
        }
-       if ( ztype[i] == SAEDmaxType + 1 )
-          error->all(FLERR,"Compute SAED: Invalid ASF atom type");
+     }
+    if ( ztype[i] == SAEDmaxType + 1 )
+        error->all(FLERR,"Compute SAED: Invalid ASF atom type");
     iarg++;
   }
 
@@ -182,7 +184,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
                 
     } else error->all(FLERR,"Illegal Compute SAED Command");
   }
-  
+
   // Zone flag to capture entire recrocal space volume
   if (  (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
   } else {
@@ -295,7 +297,6 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   size_vector = n;
   memory->create(vector,size_vector,"saed:vector");
   memory->create(store_tmp,3*size_vector,"saed:store_tmp");
-  
 
   // Create vector of variables to be passed to fix ave/time/saed
   saed_var[0] = lambda;
@@ -371,7 +372,6 @@ void ComputeSAED::init()
     } 
   }
   if (n != nRows)  error->all(FLERR,"Compute SAED Nrows inconsistent");
-
 }
 
 /* ---------------------------------------------------------------------- */
@@ -384,17 +384,18 @@ void ComputeSAED::compute_vector()
       if (screen)
         fprintf(screen,"-----\nComputing SAED intensities for %s\n", id);
   }
-
+  
+  
   double t0 = MPI_Wtime();
-  double *Fvec = new double[2*nRows]; // Strct factor (real & imaginary)
-  // -- Note, vector entries correspond to different RELP
-
+  double *Fvec = new double[2*nRows]; // Strct factor  (real & imaginary)
+  // -- Note: array rows correspond to different RELP
+ 
   ntypes = atom->ntypes;
   int nlocal = atom->nlocal;
   int *type  = atom->type;
   int natoms = group->count(igroup);
   int *mask = atom->mask;
-  
+
   nlocalgroup = 0;
   for (int ii = 0; ii < nlocal; ii++) {
     if (mask[ii] & groupbit) {
@@ -407,35 +408,35 @@ void ComputeSAED::compute_vector()
 
   int *store_omp = store_tmp;
   int *ztype_omp = ztype;
-
-  int nRows_MIC = 0;
-  int nRows_CPU = nRows;
   
+  int nRowsMIC = 0;
+  int nRowsCPU = nRows;
+
   int nthreadMIC = 1;
   int nthreadCPU = 1; 
-  
+
 #ifdef ENABLE_MIC
    char sig0;
    float MIC2CPU_ratio = ratio;
-   nRows_MIC = MIC2CPU_ratio*nRows;
-   nRows_CPU = nRows-nRows_MIC;
+   nRowsMIC = MIC2CPU_ratio*nRows;
+   nRowsCPU = nRows-nRowsMIC;
+
    nthreadMIC = 240;
- 
+
 #pragma offload target(mic:0) \
-  signal(&sig0)
-  nocopy(ztype_omp : length(ntypes) alloc_if(1) free_if(0)) \
+   nocopy(ztype_omp : length(ntypes) alloc_if(1) free_if(0)) \
    nocopy(xlocal : length(3*nlocalgroup) alloc_if(1) free_if(0)) \
    nocopy(typelocal : length(nlocalgroup) alloc_if(1) free_if(0)) \
-   nocopy(store_omp : length(3*nRows_MIC) alloc_if(1) free_if(0)) \
-   nocopy(Fvec : length(2*nRows_MIC) alloc_if(1) free_if(0)) \
- 
+   nocopy(store_omp : length(3*nRowsMIC) alloc_if(1) free_if(0)) \
+   nocopy(Fvec : length(2*nRowsMIC) alloc_if(1) free_if(0)) signal(&sig0)
 { }
 #endif
+// ==========================================================
 
   nlocalgroup = 0;
   for (int ii = 0; ii < nlocal; ii++) {
     if (mask[ii] & groupbit) {
-     xlocal[3*nlocalgroup+0] = atom->x[ii][0];
+     xlocal[3*nlocalgroup] = atom->x[ii][0];
      xlocal[3*nlocalgroup+1] = atom->x[ii][1];
      xlocal[3*nlocalgroup+2] = atom->x[ii][2];
      typelocal[nlocalgroup]=type[ii];
@@ -443,7 +444,13 @@ void ComputeSAED::compute_vector()
     }
   } 
 
-  // Setting up OMP
+   // determining paramater set to use based on maximum S = sin(theta)/lambda
+    double Smax = Kmax / 2;
+  
+    int offset = 0;                 // offset the ASFSAED matrix for appropriate value
+    if (Smax > 2)  offset = 10;  
+
+// Setting up OMP
 #ifdef _OPENMP
   nthreadCPU = comm->nthreads;
   if (me == 0 && echo) {
@@ -459,13 +466,17 @@ void ComputeSAED::compute_vector()
       fprintf(screen,"\n");
   }
 
+// ==========================================================
+// The following lines are added ............................
+//     Purpose: To offload calculations to MIC
+// ----------------------------------------------------------
 #ifdef ENABLE_MIC
   if (me == 0 && echo) {
-  printf(" - nRows_MIC = %d  (Ratio=%0.2f) \n",nRows_MIC,ratio);
+    printf(" - nRowsMIC = %d  (Ratio=%0.2f) \n",nRowsMIC,ratio);
+    printf(" - nRowsCPU = %d  (Ratio=%0.2f) \n",nRowsCPU,1-ratio);
   }
 #endif
-
-
+  
 #ifdef ENABLE_MIC
 #pragma offload_wait target(mic:0) wait(&sig0)
 char signal_var;
@@ -473,21 +484,81 @@ char signal_var;
    in(ztype_omp : length(ntypes) alloc_if(0) free_if(1)) \
    in(xlocal : length(3*nlocalgroup) alloc_if(0) free_if(1)) \
    in(typelocal : length(nlocalgroup) alloc_if(0) free_if(1)) \
-   in(store_omp : length(3*nRows_MIC) alloc_if(0) free_if(1)) \
-   out(Fvec : length(2*nRows_MIC) alloc_if(0) free_if(1)) \
+   in(store_omp : length(3*nRowsMIC) alloc_if(0) free_if(1)) \
+   out(Fvec : length(2*nRowsMIC) alloc_if(0) free_if(1)) \
    signal(&signal_var)
 {  // Start of the MIC region
-
-  if (me == 0 && echo && omp_get_thread_num() == 0) {
-   printf("nthreadsCPU = %d\n",nthreadCPU);
-   printf("nthreadsMIC = %d\n",nthreadMIC);
-   }
-
 #pragma omp parallel num_threads(nthreadMIC)
   {
-  
     double *f = new double[ntypes];    // atomic structure factor by type
-    int    typei = 0;
+    int typei = 0;
+    double Fatom1 = 0.0;               // structure factor per atom
+    double Fatom2 = 0.0;               // structure factor per atom (imaginary)
+
+    double K[3];
+    double dinv2 = 0.0;
+    double dinv  = 0.0;
+    double SinTheta_lambda  = 0.0;     // sin(theta)/lambda
+
+    double inners = 0.0;
+
+    if (me == 0 && echo && omp_get_thread_num() == 0) {
+       printf("Inside the parallel region on MIC, there are %d openMP thread(s) available for SAED\n",omp_get_max_threads());
+     printf(" nthreadsCPU = %d\n",nthreadCPU);
+     printf(" nthreadsMIC = %d\n",nthreadMIC);
+    }
+
+#pragma omp for
+      for (int n = 0; n < nRowsMIC; n++) {
+        int k = store_omp[3*n];
+        int j = store_omp[3*n+1];
+        int i = store_omp[3*n+2];
+        K[0] = i * dK[0];
+        K[1] = j * dK[1];
+        K[2] = k * dK[2];
+
+        dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
+        dinv = sqrt(dinv2);
+        SinTheta_lambda = 0.5*dinv;
+
+        Fatom1 = 0.0;
+        Fatom2 = 0.0;
+
+        // Calculate the atomic structre factor by type
+      for (int ii = 0; ii < ntypes; ii++){
+        f[ii] = 0;
+        for (int C = 0; C < 5; C++){
+          int D = C + offset;
+          f[ii] += ASFSAED[ztype_omp[ii]][D] * exp(-1 * ASFSAED[ztype_omp[ii]][5+D] * SinTheta_lambda * SinTheta_lambda);
+        }
+      }
+
+        // Evaluate the structure factor equation -- looping over all atoms
+        for (int ii = 0; ii < nlocalgroup; ii++){
+            typei=typelocal[ii]-1;
+            inners = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                      K[2] * xlocal[3*ii+2]);
+            Fatom1 += f[typei] * cos(inners);
+            Fatom2 += f[typei] * sin(inners);
+        }
+
+        Fvec[2*n] = Fatom1;
+        Fvec[2*n+1] = Fatom2;
+      } // End of pragma omp for region
+    delete [] f;
+  } // End of pragma omp parallel region 
+}  // End of MIC region
+#endif  
+  
+
+  // Start of CPU concurrent activity region
+  int m = 0;
+  double frac = 0.1;
+  double tCPU0 = MPI_Wtime();
+#pragma omp parallel num_threads(nthreadCPU)
+  {
+    double *f = new double[ntypes];    // atomic structure factor by type
+    int typei = 0;
     double Fatom1 = 0.0;               // structure factor per atom
     double Fatom2 = 0.0;               // structure factor per atom (imaginary)
     double S = 0.0;                    // sin(theta)/lambda
@@ -497,18 +568,12 @@ char signal_var;
     double SinTheta_lambda = 0.0; 
     double inners = 0.0;
 
-    // determining paramater set to use based on maximum S = sin(theta)/lambda
-    double Smax = Kmax / 2;
-  
-    int offset = 0;                 // offset the ASFSAED matrix for appropriate value
-    if (Smax > 2)  offset = 10; 
-  
     if (me == 0 && echo && omp_get_thread_num() == 0) {
-       printf("Inside the parallel region on MIC, there are %d openMP thread(s) available\n",omp_get_max_threads());
+       printf("Inside the CPU parallel region, there are %d openMP thread(s) available\n",omp_get_max_threads());
     }
 
 #pragma omp for
-    for (int n = 0; n <  nRows_MIC; n++) {
+    for (int n = nRowsMIC; n < nRows; n++) {
       int i = store_tmp[3*n];
       int j = store_tmp[3*n+1];
       int k = store_tmp[3*n+2];
@@ -536,87 +601,7 @@ char signal_var;
       // Evaluate the structure factor equation -- looping over all atoms
       for (int ii = 0; ii < nlocalgroup; ii++){
         typei=typelocal[ii]-1;
-        inners = 2 * MY_PI * (K[0] * xlocal[3*ii+0] + K[1] * xlocal[3*ii+1] +
-                  K[2] * xlocal[3*ii+2]);
-        Fatom1 += f[typei] * cos(inners);
-        Fatom2 += f[typei] * sin(inners);
-      }
-
-      Fvec[2*n] = Fatom1;
-      Fvec[2*n+1] = Fatom2;
-    } // End of pragma omp for region
-    delete [] f;
-  } // End of pragma omp parallel region 
-
-} // End of MIC region
-#endif
-
-
-
-
-
-
-
-
-
-  // Start of CPU concurrent activity region
-  int m = 0;
-  double frac = 0.1;
-  double tCPU0 = MPI_Wtime();
-#pragma omp parallel num_threads(nthreadCPU)
-  {
-    double *f = new double[ntypes];    // atomic structure factor by type
-    int typei = 0;
-    double Fatom1 = 0.0;               // structure factor per atom
-    double Fatom2 = 0.0;               // structure factor per atom (imaginary)
-    double S = 0.0;                    // sin(theta)/lambda
-    double K[3];
-    double dinv2 = 0.0;
-    double dinv  = 0.0;
-    double SinTheta_lambda = 0.0; 
-    double inners = 0.0;
-
-   // determining paramater set to use based on maximum S = sin(theta)/lambda
-    double Smax = Kmax / 2;
-  
-    int offset = 0;                 // offset the ASFSAED matrix for appropriate value
-    if (Smax > 2)  offset = 10; 
-
-
-    if (me == 0 && echo && omp_get_thread_num() == 0) {
-       printf("Inside the CPU parallel region, there are %d openMP thread(s) available\n",omp_get_max_threads());
-    }
-
-#pragma omp for
-    for (int n = nRows_MIC; n < nRows; n++) {
-      int i = store_tmp[3*n+0];
-      int j = store_tmp[3*n+1];
-      int k = store_tmp[3*n+2];
-      K[0] = i * dK[0];
-      K[1] = j * dK[1];
-      K[2] = k * dK[2];
-      
-      dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-      dinv = sqrt(dinv2);
-      SinTheta_lambda = 0.5*dinv;
-              
-      Fatom1 = 0.0;
-      Fatom2 = 0.0;
-
-      // Calculate the atomic structre factor by type
-      // determining paramater set to use based on S = sin(theta)/lambda <> 2
-      for (int ii = 0; ii < ntypes; ii++){
-        f[ii] = 0;
-        for (int C = 0; C < 5; C++){
-          int D = C + offset;
-          f[ii] += ASFSAED[ztype_omp[ii]][D] * exp(-1*ASFSAED[ztype_omp[ii]][5+D] * SinTheta_lambda * SinTheta_lambda);
-        }
-      }
-
-      // Evaluate the structure factor equation -- looping over all atoms
-      for (int ii = 0; ii < nlocalgroup; ii++){
-        typei=typelocal[ii]-1;
-        inners = 2 * MY_PI * (K[0] * xlocal[3*ii+0] + K[1] * xlocal[3*ii+1] +
+        inners = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
                   K[2] * xlocal[3*ii+2]);
         Fatom1 += f[typei] * cos(inners);
         Fatom2 += f[typei] * sin(inners);
@@ -629,7 +614,7 @@ char signal_var;
       if ( echo ) {
         #pragma omp critical
         {
-          if ( m == round(frac * nRows_CPU) ) {
+          if ( m == round(frac * nRowsCPU) ) {
             if (me == 0 && screen) fprintf(screen," %0.0f%% -",frac*100);
             frac += 0.1;
           }
@@ -643,10 +628,9 @@ char signal_var;
 
 
 #ifdef ENABLE_MIC
-#pragma offload_wait target(mic:0) wait(&sig0) //#pragma offload_wait target(mic:0) wait(&signal_var)
+#pragma offload_wait target(mic:0) wait(&signal_var)
 #endif
-
-
+  
   double *scratch = new double[2*nRows];
 
   // Sum intensity for each ang-hkl combination across processors
@@ -675,7 +659,8 @@ char signal_var;
   if (me == 0 && echo) {
     if (screen)
       fprintf(screen," 100%%\nTime ellapsed during compute_xrd = %0.2f sec using %0.2f Mbytes/processor", t2-t0, bytes/1024.0/1024.0);
-      fprintf(screen," \n -time ellapsed within CPU loop = %0.2f sec\n-----\n", tCPU1-tCPU0);
+      fprintf(screen," \n -time ellapsed within CPU loop = %0.2f sec", tCPU1-tCPU0);
+      fprintf(screen," \n -time waiting for MIC to finish = %0.2f sec\n-----\n", (t2-t0)-(tCPU1-tCPU0));
   }
 }
 
