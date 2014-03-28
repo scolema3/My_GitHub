@@ -38,30 +38,9 @@
 #include "comm.h"
 #endif
 
-// ==========================================================
-// The following lines are added ............................
-//     Purpose: To implement many-thread calculations on MIC
-// ----------------------------------------------------------
 #ifdef ENABLE_MIC
 #include "offload.h"
 #endif
-
-#ifndef __NUM_CPU_THREADS
-#ifndef OMP_NUM_THREADS
-#define __NUM_CPU_THREADS 4
-#else
-#define __NUM_CPU_THREADS OMP_NUM_THREADS
-#endif
-#endif
-
-#ifndef __NUM_MIC_THREADS
-#ifndef MIC_OMP_NUM_THREADS
-#define __NUM_MIC_THREADS 240
-#else
-#define __NUM_MIC_THREADS MIC_OMP_NUM_THREADS
-#endif
-#endif
-// ==========================================================
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
@@ -133,6 +112,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   LP = 1;
   manual = false;
   echo = false;
+  ratio = 0.5;
 
   // Process optional args
   while (iarg < narg) {
@@ -170,12 +150,11 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
     } else if (strcmp(arg[iarg],"ratio") == 0) {
       if (iarg+2 > narg) error->all(FLERR,"Illegal Compute XRD Command");
       ratio = atof(arg[iarg+1]);
-      if (ratio < 0) 
+      if (ratio <= 0) 
         error->all(FLERR,"Ratio value must be greater than or equal to zero");
-      if (ratio > 1) 
+      if (ratio >= 1) 
         error->all(FLERR,"Ratio value must be less than or equal to one");
       iarg += 2;
-
 
     } else if (strcmp(arg[iarg],"echo") == 0) {
       echo = true;
@@ -339,14 +318,18 @@ void ComputeXRD::compute_array()
 
   double t0 = MPI_Wtime();
   double *Fvec = new double[2*size_array_rows]; // Strct factor  (real & imaginary)
-  // -- Note: array rows correspond to different RELP
- 
+  
   ntypes = atom->ntypes;
   int nlocal = atom->nlocal;
   int *type  = atom->type;
   int natoms = group->count(igroup);
   int *mask = atom->mask;
 
+// ==========================================================
+// Begin Setups (4 total)
+// ==========================================================
+
+  // 1- Setup for vectorizing compute (removing mask/group dependency on xlocal)
   nlocalgroup = 0;
   for (int ii = 0; ii < nlocal; ii++) {
     if (mask[ii] & groupbit) {
@@ -356,34 +339,7 @@ void ComputeXRD::compute_array()
 
   double *xlocal = new double [3*nlocalgroup];
   int *typelocal = new int [nlocalgroup];
-
-  int *store_omp = store_tmp;
-  int *ztype_omp = ztype;
   
-  int size_array_rows_MIC = 0;
-  int size_array_rows_CPU = size_array_rows;
-
-  int nthreadMIC = 1;
-  int nthreadCPU = 1; 
-
-#ifdef ENABLE_MIC
-   char sig0;
-   float MIC2CPU_ratio = ratio;
-   size_array_rows_MIC = MIC2CPU_ratio*size_array_rows;
-   size_array_rows_CPU = size_array_rows-size_array_rows_MIC;
-
-   nthreadMIC = 240;
-
-#pragma offload target(mic:0) \
-   nocopy(ztype_omp : length(ntypes) alloc_if(1) free_if(0)) \
-   nocopy(xlocal : length(3*nlocalgroup) alloc_if(1) free_if(0)) \
-   nocopy(typelocal : length(nlocalgroup) alloc_if(1) free_if(0)) \
-   nocopy(store_omp : length(3*size_array_rows_MIC) alloc_if(1) free_if(0)) \
-   nocopy(Fvec : length(2*size_array_rows_MIC) alloc_if(1) free_if(0)) signal(&sig0)
-{ }
-#endif
-// ==========================================================
-
   nlocalgroup = 0;
   for (int ii = 0; ii < nlocal; ii++) {
     if (mask[ii] & groupbit) {
@@ -395,8 +351,29 @@ void ComputeXRD::compute_array()
     }
   } 
   
+  // 2- Setup for blocking compute to remain on L1 & L2 Cache
+  int wblockCPU = 8192;
+  int nblockCPU = floor(nlocalgroup/wblockCPU);
+  if ( nblockCPU == 0 ) wblockCPU=nlocalgroup;
 
-// Setting up OMP
+  int wblockMIC = 4096;
+  int nblockMIC = floor(nlocalgroup/wblockMIC);
+  if ( nblockMIC == 0 ) wblockMIC=nlocalgroup;
+  
+  int iistart = 0;
+  int iistop = 0;
+
+  if (me == 0 && echo) {
+      if (screen)
+        fprintf(screen," - %d block sections on CPU (Block size = %d) \n", nblockCPU, wblockCPU);
+        fprintf(screen," - %d block sections on MIC (Block size = %d) \n", nblockMIC, wblockMIC);
+  }
+ 
+  // 3- Setup for using OpenMP  
+  int *store_omp = store_tmp;
+  int *ztype_omp = ztype;
+  int nthreadCPU = 1; 
+
 #ifdef _OPENMP
   nthreadCPU = comm->nthreads;
   if (me == 0 && echo) {
@@ -404,28 +381,54 @@ void ComputeXRD::compute_array()
       fprintf(screen," - using %d OMP threads on CPU",nthreadCPU);
   }
 #endif
-  if (me == 0 && echo) {
-    if (screen)
-#ifdef ENABLE_MIC
-      fprintf(screen," and using %d OMP threads on MIC",nthreadMIC);
-#endif
-      fprintf(screen,"\n");
-  }
+  
+  // 4- Setup for using MIC offloading  
+  int size_array_rows_MIC = 0;
+  int size_array_rows_CPU = size_array_rows;
 
-// ==========================================================
-// The following lines are added ............................
-//     Purpose: To offload calculations to MIC
-// ----------------------------------------------------------
+  int nthreadMIC = 1;
+  int nprocMIC = 0 ; 
+
 #ifdef ENABLE_MIC
-  if (me == 0 && echo) {
+   char sig0=me;
+   float MIC2CPU_ratio = ratio;
+   size_array_rows_MIC = MIC2CPU_ratio*size_array_rows;
+   size_array_rows_CPU = size_array_rows-size_array_rows_MIC;
+
+   if (getenv("MIC_OMP_NUM_THREADS") == NULL) {
+     nthreadMIC = 240;
+     if (me == 0)
+       error->warning(FLERR,"MIC_OMP_NUM_THREADS environment is not set.");
+   } else {
+#pragma offload target(mic:0) \
+   nocopy(ztype_omp : length(ntypes) alloc_if(1) free_if(0)) \
+   nocopy(xlocal : length(3*nlocalgroup) alloc_if(1) free_if(0)) \
+   nocopy(typelocal : length(nlocalgroup) alloc_if(1) free_if(0)) \
+   nocopy(store_omp : length(3*size_array_rows_MIC) alloc_if(1) free_if(0)) \
+   nocopy(Fvec : length(2*size_array_rows_MIC) alloc_if(1) free_if(0)) signal(&sig0)
+{  
+   nthreadMIC = omp_get_max_threads(); 
+   nprocMIC = omp_get_num_procs();
+}   
+   }
+
+   if (me == 0 && echo) {
     printf(" - size_array_rows_MIC = %d  (Ratio=%0.2f) \n",size_array_rows_MIC,ratio);
     printf(" - size_array_rows_CPU = %d  (Ratio=%0.2f) \n",size_array_rows_CPU,1-ratio);
-  }
+   }
 #endif
-  
+// ==========================================================
+// End Setups
+// ==========================================================
+
+
+
+// ==========================================================
+// Begin MIC Offload Region
+// ==========================================================
 #ifdef ENABLE_MIC
 #pragma offload_wait target(mic:0) wait(&sig0)
-char signal_var;
+char signal_var=me;
 #pragma offload target(mic:0) \
    in(ztype_omp : length(ntypes) alloc_if(0) free_if(1)) \
    in(xlocal : length(3*nlocalgroup) alloc_if(0) free_if(1)) \
@@ -437,29 +440,31 @@ char signal_var;
 #pragma omp parallel num_threads(nthreadMIC)
   {
     double *f = new double[ntypes];    // atomic structure factor by type
-    int typei = 0;
+    int typei = 0;                     // atom type
     double Fatom1 = 0.0;               // structure factor per atom
     double Fatom2 = 0.0;               // structure factor per atom (imaginary)
 
-    double K[3];
-    double dinv2 = 0.0;
-    double dinv  = 0.0;
+    double K[3];                       // Position in reciprocal space
+    double dinv2 = 0.0;                // inverse spacing squared
+    double dinv  = 0.0;                // inverse spacing
     double SinTheta_lambda  = 0.0;     // sin(theta)/lambda
-    double SinTheta = 0.0;
-    double ang = 0.0;
-    double Cos2Theta = 0.0;
-    double CosTheta = 0.0;
+    double SinTheta = 0.0;             // sin(theta)
+    double ang = 0.0;                  // scatter angle = theta 
+    double Cos2Theta = 0.0;            // cos(2*theta)
+    double CosTheta = 0.0;             // cos(theta)
 
-    double inners = 0.0;
-    double lp = 0.0;
+    double lp = 0.0;                         // LP factor at K
+    double *inners = new double[wblockMIC];  // (2pi* dot(K,xlocal)
 
     if (me == 0 && echo && omp_get_thread_num() == 0) {
-       printf("Inside the parallel region on MIC, there are %d openMP thread(s) available for XRD\n",omp_get_max_threads());
+     printf("Inside the parallel region on MIC, there are %d openMP thread(s) available for XRD\n",omp_get_num_procs());
      printf(" nthreadsCPU = %d\n",nthreadCPU);
      printf(" nthreadsMIC = %d\n",nthreadMIC);
+     printf(" wblockMIC = %d, nblockMIC = %d", wblockMIC,nblockMIC);
      printf(" LP = %d\n",LP);
     }
-
+    
+    // Loop when Lorentz-Polarization factor is applied
     if (LP == 1) {
 #pragma omp for
       for (int n = 0; n < size_array_rows_MIC; n++) {
@@ -491,20 +496,41 @@ char signal_var;
         }
 
         // Evaluate the structure factor equation -- looping over all atoms
-        for (int ii = 0; ii < nlocalgroup; ii++){
-            inners = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
-                      K[2] * xlocal[3*ii+2]);
-            typei=typelocal[ii]-1;
-            Fatom1 += f[typei] * cos(inners);
-            Fatom2 += f[typei] * sin(inners);
+        // Blocking the compute to remain in L1 & L2 cache
+        for (int block = 0; block < nblockMIC; block++){
+          iistart = block*wblockMIC;
+          iistop =  iistart+wblockMIC;
+          for (int ii = iistart; ii < iistop; ii++){
+               inners[ii-iistart] = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                         K[2] * xlocal[3*ii+2]);
+          }
+          for (int ii = iistart; ii < iistop; ii++){
+               typei=typelocal[ii]-1;
+               Fatom1 += f[typei] * cos(inners[ii-iistart]);
+               Fatom2 += f[typei] * sin(inners[ii-iistart]);
+          }
         }
+        // Finishing atoms not in block
+        iistart = nblockMIC*wblockMIC;
+        iistop =  iistart+wblockMIC;
+        for (int ii = nblockMIC*wblockMIC; ii < nlocalgroup; ii++){
+             inners[ii-iistart] = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                       K[2] * xlocal[3*ii+2]);
+        }
+        for (int ii = nblockMIC*wblockMIC; ii < nlocalgroup; ii++){
+            typei=typelocal[ii]-1;
+            Fatom1 += f[typei] * cos(inners[ii-iistart]);
+            Fatom2 += f[typei] * sin(inners[ii-iistart]);
+        }
+        
         lp = (1 + Cos2Theta * Cos2Theta) /
              ( CosTheta * SinTheta * SinTheta);
 
         Fvec[2*n] = Fatom1 * lp;
         Fvec[2*n+1] = Fatom2 * lp;
       } // End of pragma omp for region
-
+      
+    // Loop when Lorentz-Polarization factor is NOT applied
     } else {
 #pragma omp for
       for (int n = 0; n < size_array_rows_MIC; n++) {
@@ -532,31 +558,50 @@ char signal_var;
         }
 
         // Evaluate the structure factor equation -- looping over all atoms
-        for (int ii = 0; ii < nlocalgroup; ii++){
-            inners = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
-                      K[2] * xlocal[3*ii+2]);
-            typei=typelocal[ii]-1;
-            Fatom1 += f[typei] * cos(inners);
-            Fatom2 += f[typei] * sin(inners);
+        // Blocking the compute to remain in L1 & L2 cache
+        for (int block = 0; block < nblockMIC; block++){
+          iistart = block*wblockMIC;
+          iistop =  iistart+wblockMIC;
+          for (int ii = iistart; ii < iistop; ii++){
+               inners[ii-iistart] = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                         K[2] * xlocal[3*ii+2]);
+          }
+          for (int ii = iistart; ii < iistop; ii++){
+               typei=typelocal[ii]-1;
+               Fatom1 += f[typei] * cos(inners[ii-iistart]);
+               Fatom2 += f[typei] * sin(inners[ii-iistart]);
+          }
         }
+        // Finishing atoms not in block
+        iistart = nblockMIC*wblockMIC;
+        iistop =  iistart+wblockMIC;
+        for (int ii = nblockMIC*wblockMIC; ii < nlocalgroup; ii++){
+             inners[ii-iistart] = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                       K[2] * xlocal[3*ii+2]);
+        }
+        for (int ii = nblockMIC*wblockMIC; ii < nlocalgroup; ii++){
+            typei=typelocal[ii]-1;
+            Fatom1 += f[typei] * cos(inners[ii-iistart]);
+            Fatom2 += f[typei] * sin(inners[ii-iistart]);
+        }
+        
         Fvec[2*n] = Fatom1;
         Fvec[2*n+1] = Fatom2;
       } // End of pragma omp for region
     } // End of if LP=1 check 
     delete [] f;
   } // End of pragma omp parallel region 
-// ==========================================================
-// The following lines are added ............................
-//    Purpose: A bracket is needed to close the MIC region,
-//             and a wait signal is needed to make sure that
-//             MIC is done the calculation.
-// ----------------------------------------------------------
 }  // End of MIC region
 #endif
+// ==========================================================
+// END MIC Offload Region
+// ==========================================================
 
 
 
-  // Start of CPU concurrent activity region
+// ==========================================================
+// Begin CPU Concurrent Activity Region
+// ==========================================================
   double tCPU0 = MPI_Wtime();
   int m = 0;
   double frac = 0.1;
@@ -576,12 +621,14 @@ char signal_var;
     double Cos2Theta = 0.0;
     double CosTheta = 0.0;
 
-    double *inners = new double[nlocalgroup];
     double lp = 0.0;
+    double *inners = new double[wblockCPU];
 
     if (me == 0 && echo && omp_get_thread_num() == 0) {
        printf("Inside the CPU parallel region, there are %d openMP thread(s) available\n",omp_get_max_threads());
     }
+    
+    // Loop when Lorentz-Polarization factor is applied    
     if (LP == 1) {
 #pragma omp for
       for (int n = size_array_rows_MIC; n < size_array_rows; n++) {
@@ -612,17 +659,34 @@ char signal_var;
           f[ii] += ASFXRD[ztype_omp[ii]][8];
         }
 
-
         // Evaluate the structure factor equation -- looping over all atoms
-        for (int ii = 0; ii < nlocalgroup; ii++){
-            inners[ii] = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
-                      K[2] * xlocal[3*ii+2]);
+        // Blocking the compute to remain in L1 & L2 cache
+        for (int block = 0; block < nblockCPU; block++){
+          iistart = block*wblockCPU;
+          iistop =  iistart+wblockCPU;
+          for (int ii = iistart; ii < iistop; ii++){
+               inners[ii-iistart] = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                         K[2] * xlocal[3*ii+2]);
+          }
+          for (int ii = iistart; ii < iistop; ii++){
+               typei=typelocal[ii]-1;
+               Fatom1 += f[typei] * cos(inners[ii-iistart]);
+               Fatom2 += f[typei] * sin(inners[ii-iistart]);
+          }
         }
-        for (int ii = 0; ii < nlocalgroup; ii++){
+        // Finishing atoms not in block
+        iistart = nblockCPU*wblockCPU;
+        iistop =  iistart+wblockCPU;
+        for (int ii = nblockCPU*wblockCPU; ii < nlocalgroup; ii++){
+             inners[ii-iistart] = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                       K[2] * xlocal[3*ii+2]);
+        }
+        for (int ii = nblockCPU*wblockCPU; ii < nlocalgroup; ii++){
             typei=typelocal[ii]-1;
-            Fatom1 += f[typei] * cos(inners[ii]);
-            Fatom2 += f[typei] * sin(inners[ii]);
+            Fatom1 += f[typei] * cos(inners[ii-iistart]);
+            Fatom2 += f[typei] * sin(inners[ii-iistart]);
         }
+
         lp = (1 + Cos2Theta * Cos2Theta) /
              ( CosTheta * SinTheta * SinTheta);
         Fvec[2*n] = Fatom1 * lp;
@@ -641,6 +705,7 @@ char signal_var;
         }      
       } // End of pragma omp for region
 
+    // Loop when Lorentz-Polarization factor is NOT applied
     } else {
 #pragma omp for
       for (int n = size_array_rows_MIC; n < size_array_rows; n++) {
@@ -669,18 +734,35 @@ char signal_var;
         }
 
         // Evaluate the structure factor equation -- looping over all atoms
-        for (int ii = 0; ii < nlocalgroup; ii++){
-            inners[ii] = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
-                      K[2] * xlocal[3*ii+2]);
+        // Blocking the compute to remain in L1 & L2 cache
+        for (int block = 0; block < nblockCPU; block++){
+          iistart = block*wblockCPU;
+          iistop =  iistart+wblockCPU;
+          for (int ii = iistart; ii < iistop; ii++){
+               inners[ii-iistart] = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                         K[2] * xlocal[3*ii+2]);
+          }
+          for (int ii = iistart; ii < iistop; ii++){
+               typei=typelocal[ii]-1;
+               Fatom1 += f[typei] * cos(inners[ii-iistart]);
+               Fatom2 += f[typei] * sin(inners[ii-iistart]);
+          }
         }
-        for (int ii = 0; ii < nlocalgroup; ii++){
+        // Finishing atoms not in block
+        iistart = nblockCPU*wblockCPU;
+        iistop =  iistart+wblockCPU;
+        for (int ii = nblockCPU*wblockCPU; ii < nlocalgroup; ii++){
+             inners[ii-iistart] = 2 * MY_PI * (K[0] * xlocal[3*ii] + K[1] * xlocal[3*ii+1] +
+                       K[2] * xlocal[3*ii+2]);
+        }
+        for (int ii = nblockCPU*wblockCPU; ii < nlocalgroup; ii++){
             typei=typelocal[ii]-1;
-            Fatom1 += f[typei] * cos(inners[ii]);
-            Fatom2 += f[typei] * sin(inners[ii]);
+            Fatom1 += f[typei] * cos(inners[ii-iistart]);
+            Fatom2 += f[typei] * sin(inners[ii-iistart]);
         }
+ 
         Fvec[2*n] = Fatom1;
         Fvec[2*n+1] = Fatom2;
-
 
         // reporting progress of calculation
         if ( echo ) {
@@ -699,19 +781,19 @@ char signal_var;
     delete [] inners;
   } // End of pragma omp parallel region on CPU
   double tCPU1 = MPI_Wtime();
+// ==========================================================
+// End CPU Concurrent Activity Region
+// ==========================================================
 
+
+
+// ==========================================================
+// Gather computed data from all sources
 // ==========================================================
 #ifdef ENABLE_MIC
 #pragma offload_wait target(mic:0) wait(&signal_var)
 #endif
-
-// ==========================================================
-// The following lines are modified..........................
-//    Purpose: MPI_Allreduce function is called only once.
-// ----------------------------------------------------------
   double *scratch = new double[2*size_array_rows];
-
-  // Sum intensity for each ang-hkl combination across processors
   MPI_Allreduce(Fvec,scratch,2*size_array_rows,MPI_DOUBLE,MPI_SUM,world);
 
 #pragma omp parallel for
@@ -723,9 +805,6 @@ char signal_var;
   delete [] Fvec;
   delete [] xlocal;
   delete [] typelocal;
-// ==========================================================
-
-  double t2 = MPI_Wtime();
 
   // compute memory usage per processor
   double bytes = size_array_rows * size_array_cols * sizeof(double); //array
@@ -735,7 +814,7 @@ char signal_var;
   bytes += nlocalgroup * sizeof(int); // x
   bytes += 3.0 * size_array_rows * sizeof(int); // store_temp
   
-
+  double t2 = MPI_Wtime();
   if (me == 0 && echo) {
     if (screen)
       fprintf(screen," 100%%\nTime ellapsed during compute_xrd = %0.2f sec using %0.2f Mbytes/processor", t2-t0, bytes/1024.0/1024.0);
