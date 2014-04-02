@@ -519,9 +519,9 @@ char signal_var;
 
 #pragma omp for
       for (int n = 0; n < nRowsMIC; n++) {
-        int k = store_omp[3*n];
+        int i = store_omp[3*n];
         int j = store_omp[3*n+1];
-        int i = store_omp[3*n+2];
+        int k = store_omp[3*n+2];
         K[0] = i * dK[0];
         K[1] = j * dK[1];
         K[2] = k * dK[2];
@@ -695,7 +695,7 @@ char signal_var;
   double *scratch = new double[2*nRows];
   MPI_Allreduce(Fvec,scratch,2*nRows,MPI_DOUBLE,MPI_SUM,world);
 
-#pragma omp parallel for
+// #pragma omp parallel for
   for (int i = 0; i < nRows; i++) {
     vector[i] = (scratch[2*i] * scratch[2*i] + scratch[2*i+1] * scratch[2*i+1]) / natoms;
   }
