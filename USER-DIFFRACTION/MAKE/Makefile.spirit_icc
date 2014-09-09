@@ -1,4 +1,10 @@
-# stampede = TACC Stampede machine with mpiicc, MPI, FFTW, openMP, MIC offloading
+# mkl = Intel Cluster Tools, mpiicc, MKL MPI, MKL FFT
+
+# Intel recommends Intel Cluster Tools Compiler Edition
+# to build libfftw2xc_intel.a: 
+# > cd /opt/intel/mkl/10.0.011/interfaces/fftw2xc
+# > become root via su
+# > gmake libem64t
 
 SHELL = /bin/sh
 
@@ -6,14 +12,14 @@ SHELL = /bin/sh
 # compiler/linker settings
 # specify flags and libraries needed for your compiler
 
-CC =		mpicxx
-CCFLAGS =	-O2 -openmp -DENABLE_MIC -xhost
+CC =		icpc
+CCFLAGS =	-O3 -fno-alias -ip -unroll0 -xhost
 SHFLAGS =	-fPIC
 DEPFLAGS =	-M
 
-LINK =		mpicxx
-LINKFLAGS =	-O2 -liomp5 -lpthread
-LIB =           -lstdc++ -lm
+LINK =		icpc
+LINKFLAGS =     -O3 -L/apps/intel/mkl/lib/intel64/ -L/apps/intel/lib/intel64/
+LIB =           -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_lapack95_lp64 -lstdc++ -lpthread -lifcore -liomp5
 SIZE =		size
 
 ARCHIVE =	ar
@@ -37,9 +43,9 @@ LMP_INC =	-DLAMMPS_GZIP
 # PATH = path for MPI library
 # LIB = name of MPI library
 
-MPI_INC =       
+MPI_INC =       -DMPICH_SKIP_MPICXX 
 MPI_PATH = 
-MPI_LIB =
+MPI_LIB =	-lmpi -lmpi++
 
 # FFT library, OPTIONAL
 # see discussion in doc/Section_start.html#2_2 (step 6)
@@ -48,12 +54,10 @@ MPI_LIB =
 # PATH = path for FFT library
 # LIB = name of FFT library
 
-FFTW_INC =
-FFTW_LIB = 
-
-FFT_INC =       -DFFT_NONE
+FFT_INC =       -DFFT_FFTW -I/apps/intel/mkl/include/fftw
 FFT_PATH =
-FFT_LIB =
+#FFT_LIB =       /apps/intel/mkl/interfaces/fftw2xc/libfftw2xc_intel.a
+FFT_LIB =       /apps/intel/mkl/interfaces/local/fftw2xc/libfftw2xc_intel.a 
 
 # JPEG library, OPTIONAL
 # see discussion in doc/Section_start.html#2_2 (step 7)
@@ -78,7 +82,7 @@ EXTRA_PATH = $(PKG_PATH) $(MPI_PATH) $(FFT_PATH) $(JPG_PATH) $(PKG_SYSPATH)
 EXTRA_LIB = $(PKG_LIB) $(MPI_LIB) $(FFT_LIB) $(JPG_LIB) $(PKG_SYSLIB)
 
 # Path to src files
-
+ 
 vpath %.cpp ..
 vpath %.h ..
 

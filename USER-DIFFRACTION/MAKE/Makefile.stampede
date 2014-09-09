@@ -7,7 +7,7 @@ SHELL = /bin/sh
 # specify flags and libraries needed for your compiler
 
 CC =		mpicc
-CCFLAGS =	-O2 -g -openmp -DENABLE_MIC 
+CCFLAGS =	-O2 -g -openmp -DENABLE_MIC -xhost
 SHFLAGS =	-fPIC
 DEPFLAGS =	-M
 
