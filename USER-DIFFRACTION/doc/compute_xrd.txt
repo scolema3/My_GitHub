@@ -35,11 +35,10 @@ keyword = {2Theta} or {c} or {LP} or {manual} or {echo} :l
 
 [Examples:]
 
-compute 1 all xrd 1.541838 Al O 2Theta 0.087 0.87 c 1 1 1 LP echo 
-compute 2 all xrd 1.541838 Al O 2Theta 10 100 c 0.05 0.05 0.05 LP manual 
+compute 1 all xrd 1.541838 Al O 2Theta 0.087 0.87 c 1 1 1 LP 1 echo 
+compute 2 all xrd 1.541838 Al O 2Theta 10 100 c 0.05 0.05 0.05 LP 1 manual 
 
 fix 1 all ave/histo 1 1 1 0.087 0.87 250 c_1[1] mode vector weights c_1[2] file Rad2Theta.xrd
-
 fix 2 all ave/histo 1 1 1 10 100 250 c_2[1] mode vector weights c_2[2] file Deg2Theta.xrd
 
 :pre

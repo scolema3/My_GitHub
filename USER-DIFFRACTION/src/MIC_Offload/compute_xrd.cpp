@@ -87,7 +87,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   if (lambda <= 0)
     error->all(FLERR,"Compute SAED: Wavelength must be greater than zero");
 
-  // Define atom types for atomic scattering factor coefficents
+  // Define atom types for atomic scattering factor coefficients
   int iarg = 4;  
   ztype = new int[ntypes];
   for (int i = 0; i < ntypes; i++){
@@ -169,7 +169,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
  
   Kmax = 2 * sin(Max2Theta) / lambda;
  
-  // Calculating spacing between reciprical lattice points using the prd
+  // Calculating spacing between reciprocal lattice points using the prd
   double *prd;
   double ave_inv = 0.0; 
 
@@ -207,13 +207,13 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
     }
   } 
   
-  // Find reprical spacing and integer dimensions
+  // Find reciprocal spacing and integer dimensions
   for (int i=0; i<3; i++) {
     dK[i] = prd_inv[i]*c[i];
     Knmax[i] = ceil(Kmax / dK[i]);
   } 
   
-  // Finding the intersection of the reciprical space and Ewald sphere
+  // Finding the intersection of the reciprocal space and Ewald sphere
   int nRows = 0;
   double dinv2= 0.0;
   double r = 0.0;
@@ -366,7 +366,9 @@ void ComputeXRD::compute_array()
   if (me == 0 && echo) {
       if (screen)
         fprintf(screen," - %d block sections on CPU (Block size = %d) \n", nblockCPU, wblockCPU);
+#ifdef ENABLE_MIC        
         fprintf(screen," - %d block sections on MIC (Block size = %d) \n", nblockMIC, wblockMIC);
+#endif        
   }
  
   // 3- Setup for using OpenMP  
@@ -453,7 +455,7 @@ char signal_var=me;
     double Cos2Theta = 0.0;            // cos(2*theta)
     double CosTheta = 0.0;             // cos(theta)
 
-    double lp = 0.0;                         // LP factor at K
+    double sqrt_lp = 0.0;                    // LP factor at K
     double *inners = new double[wblockMIC];  // (2pi* dot(K,xlocal)
 
     if (me == 0 && echo && omp_get_thread_num() == 0) {
@@ -486,7 +488,7 @@ char signal_var=me;
         Fatom1 = 0.0;
         Fatom2 = 0.0;
 
-        // Calculate the atomic structre factor by type
+        // Calculate the atomic structure factor by type
         for (int ii = 0; ii < ntypes; ii++){
           f[ii] = 0;
           for (int C = 0; C < 8 ; C+=2){
@@ -523,11 +525,11 @@ char signal_var=me;
             Fatom2 += f[typei] * sin(inners[ii-iistart]);
         }
         
-        lp = (1 + Cos2Theta * Cos2Theta) /
-             ( CosTheta * SinTheta * SinTheta);
+        sqrt_lp = sqrt((1 + Cos2Theta * Cos2Theta) /
+             ( CosTheta * SinTheta * SinTheta));
 
-        Fvec[2*n] = Fatom1 * lp;
-        Fvec[2*n+1] = Fatom2 * lp;
+        Fvec[2*n] = Fatom1 * sqrt_lp;
+        Fvec[2*n+1] = Fatom2 * sqrt_lp;
       } // End of pragma omp for region
       
     // Loop when Lorentz-Polarization factor is NOT applied
@@ -621,13 +623,14 @@ char signal_var=me;
     double Cos2Theta = 0.0;
     double CosTheta = 0.0;
 
-    double lp = 0.0;
+    double sqrt_lp = 0.0;
     double *inners = new double[wblockCPU];
 
+#ifdef _OPENMP
     if (me == 0 && echo && omp_get_thread_num() == 0) {
        printf("Inside the CPU parallel region, there are %d openMP thread(s) available\n",omp_get_max_threads());
     }
-    
+#endif    
     // Loop when Lorentz-Polarization factor is applied    
     if (LP == 1) {
 #pragma omp for
@@ -687,10 +690,10 @@ char signal_var=me;
             Fatom2 += f[typei] * sin(inners[ii-iistart]);
         }
 
-        lp = (1 + Cos2Theta * Cos2Theta) /
-             ( CosTheta * SinTheta * SinTheta);
-        Fvec[2*n] = Fatom1 * lp;
-        Fvec[2*n+1] = Fatom2 * lp;
+        sqrt_lp = sqrt((1 + Cos2Theta * Cos2Theta) /
+                  ( CosTheta * SinTheta * SinTheta));
+        Fvec[2*n] = Fatom1 * sqrt_lp;
+        Fvec[2*n+1] = Fatom2 * sqrt_lp;
 
         // reporting progress of calculation
         if ( echo ) {
@@ -781,6 +784,7 @@ char signal_var=me;
     delete [] inners;
   } // End of pragma omp parallel region on CPU
   double tCPU1 = MPI_Wtime();
+  
 // ==========================================================
 // End CPU Concurrent Activity Region
 // ==========================================================
@@ -819,7 +823,9 @@ char signal_var=me;
     if (screen)
       fprintf(screen," 100%%\nTime ellapsed during compute_xrd = %0.2f sec using %0.2f Mbytes/processor", t2-t0, bytes/1024.0/1024.0);
       fprintf(screen," \n -time ellapsed within CPU loop = %0.2f sec", tCPU1-tCPU0);
+#ifdef ENABLE_MIC      
       fprintf(screen," \n -time waiting for MIC to finish = %0.2f sec\n-----\n", (t2-t0)-(tCPU1-tCPU0));
+#endif
   }
 }
 

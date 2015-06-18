@@ -88,7 +88,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   if (lambda < 0)
     error->all(FLERR,"Compute SAED: Wavelength must be greater than zero");
 
-  // Define atom types for atomic scattering factor coefficents
+  // Define atom types for atomic scattering factor coefficients
 
   int iarg = 4;
   ztype = new int[ntypes];
@@ -170,7 +170,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
     } else error->all(FLERR,"Illegal Compute SAED Command");
   }
 
-  // Zone flag to capture entire recrocal space volume
+  // Zone flag to capture entire reciprocal space volume
   if (  (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
   } else {
       R_Ewald = (1 / lambda); 
@@ -182,7 +182,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   }
 
   // Procedure to determine how many rows are needed given the constraints on 2theta
-  // Calculating spacing between reciprical lattice points 
+  // Calculating spacing between reciprocal lattice points 
   // Using distance based on periodic repeating distance
   if (!manual) {  
     if (!periodicity[0] && !periodicity[1] && !periodicity[2])
@@ -224,18 +224,18 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
     }
   } 
   
-  // Find reprical spacing and integer dimensions
+  // Find reciprocal spacing and integer dimensions
   for (int i=0; i<3; i++) {
     dK[i] = prd_inv[i]*c[i];
     Knmax[i] = ceil(Kmax / dK[i]);
   }
  
-  // Finding the intersection of the reciprical space and Ewald sphere
+  // Finding the intersection of the reciprocal space and Ewald sphere
   int n = 0;
   double dinv2, r2, EmdR2, EpdR2;
   double K[3];
   
-  // Zone flag to capture entire recrocal space volume
+  // Zone flag to capture entire reciprocal space volume
   if ( (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
     for (int k = -Knmax[2]; k <= Knmax[2]; k++) {
       for (int j = -Knmax[1]; j <= Knmax[1]; j++) {
@@ -313,7 +313,7 @@ void ComputeSAED::init()
   double K[3];
   int n = 0;
   
-  // Zone 0 0 0 flag to capture entire recrocal space volume
+  // Zone 0 0 0 flag to capture entire reciprocal space volume
   if ( (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
     for (int k = -Knmax[2]; k <= Knmax[2]; k++) {
       for (int j = -Knmax[1]; j <= Knmax[1]; j++) {
@@ -411,17 +411,20 @@ void ComputeSAED::compute_vector()
   int nblockCPU = floor(nlocalgroup/wblockCPU);
   if ( nblockCPU == 0 ) wblockCPU=nlocalgroup;
 
+#ifdef ENABLE_MIC   
   int wblockMIC = 4096;
   int nblockMIC = floor(nlocalgroup/wblockMIC);
   if ( nblockMIC == 0 ) wblockMIC=nlocalgroup;
-  
+#endif  
   int iistart = 0;
   int iistop = 0;
 
   if (me == 0 && echo) {
       if (screen)
         fprintf(screen," - %d block sections on CPU (Block size = %d) \n", nblockCPU, wblockCPU);
+#ifdef ENABLE_MIC           
         fprintf(screen," - %d block sections on MIC (Block size = %d) \n", nblockMIC, wblockMIC);
+#endif
   }  
   
   // 3- Setup for using OpenMP   
@@ -472,14 +475,14 @@ void ComputeSAED::compute_vector()
   }
 #endif
 
-  // 5- Setup determining paramater set to use from maximum S=sin(theta)/lambda
+  // 5- Setup determining parameter set to use from maximum S=sin(theta)/lambda
   double Smax = Kmax / 2;
   int offset = 0;             // offset the ASFSAED matrix for appropriate value
   if (Smax > 2)  offset = 10;  
+  
 // ==========================================================
 // End Setups
 // ==========================================================
-
 
 
 // ==========================================================
@@ -533,7 +536,7 @@ char signal_var;
         Fatom1 = 0.0;
         Fatom2 = 0.0;
 
-        // Calculate the atomic structre factor by type
+        // Calculate the atomic structure factor by type
       for (int ii = 0; ii < ntypes; ii++){
         f[ii] = 0;
         for (int C = 0; C < 5; C++){
@@ -603,9 +606,11 @@ char signal_var;
      
     double *inners = new double[nlocalgroup];
 
+#ifdef _OPENMP
     if (me == 0 && echo && omp_get_thread_num() == 0) {
        printf("Inside the CPU parallel region, there are %d openMP thread(s) available\n",omp_get_max_threads());
     }
+#endif
 
 #pragma omp for
     for (int n = nRowsMIC; n < nRows; n++) {
@@ -623,8 +628,8 @@ char signal_var;
       Fatom1 = 0.0;
       Fatom2 = 0.0;
 
-      // Calculate the atomic structre factor by type
-      // determining paramater set to use based on S = sin(theta)/lambda <> 2
+      // Calculate the atomic structure factor by type
+      // determining parameter set to use based on S = sin(theta)/lambda <> 2
       for (int ii = 0; ii < ntypes; ii++){
         f[ii] = 0;
         for (int C = 0; C < 5; C++){
@@ -680,6 +685,7 @@ char signal_var;
     delete [] inners;
   }  // End of pragma omp parallel region on CPU
   double tCPU1 = MPI_Wtime();
+  
 // ==========================================================
 // End CPU Concurrent Activity Region
 // ==========================================================
@@ -718,7 +724,9 @@ char signal_var;
     if (screen)
       fprintf(screen," 100%%\nTime ellapsed during compute_xrd = %0.2f sec using %0.2f Mbytes/processor", t2-t0, bytes/1024.0/1024.0);
       fprintf(screen," \n -time ellapsed within CPU loop = %0.2f sec", tCPU1-tCPU0);
+#ifdef ENABLE_MIC      
       fprintf(screen," \n -time waiting for MIC to finish = %0.2f sec\n-----\n", (t2-t0)-(tCPU1-tCPU0));
+#endif      
   }
 }
 

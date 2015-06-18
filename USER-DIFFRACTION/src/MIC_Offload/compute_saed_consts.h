@@ -15,7 +15,7 @@
 #define LMP_COMPUTE_SAED_CONSTS_H
 
 /*
-The paramaters for analytical approximation of the atomic scattering factors
+The parameters for analytical approximation of the atomic scattering factors
 used for electron diffraction are gathered from the resources: 
 
 Colliex C et al 2004 Electron diffraction International Tables for 

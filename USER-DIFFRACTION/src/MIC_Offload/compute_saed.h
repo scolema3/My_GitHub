@@ -42,13 +42,13 @@ class ComputeSAED : public Compute {
   double  prd_inv[3];        // Inverse spacing of unit cell
   bool    echo;              // echo compute_array progress
   float   ratio;             // Ratio of RELP offloaded to MIC
-  bool    manual;            // Turn on manual recpiprocal map
+  bool    manual;            // Turn on manual reciprocal map
   double  *f;
-  int     nRows;             // Number of relp explored
+  int     nRows;             // Number of RELP explored
 
   double  Zone[3];           // Zone axis to view SAED
   double  R_Ewald;           // Radius of Ewald sphere (distance units)
-  double  lambda;            // Radiation wavelenght (distance units)
+  double  lambda;            // Radiation wavelength (distance units)
   double  dK[3];             // spacing of reciprocal points in each dimension
   int     Knmax[3];          // maximum integer value for K points in each dimension
   double  Kmax;              // Maximum reciprocal distance to explore

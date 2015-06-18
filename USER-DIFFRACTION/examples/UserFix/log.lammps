@@ -1,0 +1,4 @@
+LAMMPS (20 Jan 2015)
+variable  A string "bulkNi"
+log		$A.log
+log		bulkNi.log

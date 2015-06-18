@@ -46,11 +46,11 @@ class ComputeXRD : public Compute {
   int     LP;                // Switch to turn on Lorentz-Polarization factor 1=on
   float   ratio;             // Ratio of RELP offloaded to MIC
   bool    echo;              // echo compute_array progress
-  bool    manual;            // Turn on manual recpiprocal map
+  bool    manual;            // Turn on manual reciprocal map
 	  
   int ntypes;
   int nlocalgroup;
-  double lambda;             // Radiation wavelenght (distance units)
+  double lambda;             // Radiation wavelength (distance units)
   int radflag;
   int *store_tmp;
   

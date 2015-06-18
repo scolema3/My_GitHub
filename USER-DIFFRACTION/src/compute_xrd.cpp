@@ -13,6 +13,7 @@
 
 /* ----------------------------------------------------------------------
    Contributing authors: Shawn Coleman & Douglas Spearot (Arkansas)
+   Updated: 06/17/2015-2
 ------------------------------------------------------------------------- */
 
 #include "mpi.h"
@@ -83,13 +84,13 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   if (lambda < 0)
     error->all(FLERR,"Compute SAED: Wavelength must be greater than zero");
 
-  // Define atom types for atomic scattering factor coefficents
+  // Define atom types for atomic scattering factor coefficients
   int iarg = 4;  
   ztype = new int[ntypes];
   for (int i = 0; i < ntypes; i++){
     ztype[i] = XRDmaxType + 1;
   }
-  for (int i=0; i<ntypes; i++) {   
+  for (int i = 0; i < ntypes; i++) {   
     for(int j = 0; j < XRDmaxType; j++){
       if (strcasecmp(arg[iarg],XRDtypeList[j]) == 0) {
         ztype[i] = j;
@@ -158,7 +159,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
  
   Kmax = 2 * sin(Max2Theta) / lambda;
  
-  // Calculating spacing between reciprical lattice points 
+  // Calculating spacing between reciprocal lattice points 
   // Using distance based on periodic repeating distance
   if (!manual) {  
     if (!periodicity[0] && !periodicity[1] && !periodicity[2])
@@ -201,13 +202,13 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
     }
   } 
   
-  // Find reprical spacing and integer dimensions
+  // Find reciprocal spacing and integer dimensions
   for (int i=0; i<3; i++) {
     dK[i] = prd_inv[i]*c[i];
     Knmax[i] = ceil(Kmax / dK[i]);
   } 
   
-  // Finding the intersection of the reciprical space and Ewald sphere
+  // Finding the intersection of the reciprocal space and Ewald sphere
   int nRows = 0;
   double dinv2= 0.0;
   double ang = 0.0;
@@ -263,7 +264,7 @@ void ComputeXRD::init()
   int mmax = (2*Knmax[0]+1)*(2*Knmax[1]+1)*(2*Knmax[2]+1);
   double K[3];
   double dinv2 = 0.0;
-  double ang =0.0;
+  double ang = 0.0;
 
   double convf = 360 / MY_PI;
   if (radflag ==1){
@@ -340,19 +341,6 @@ void ComputeXRD::compute_array()
     }
   }    
 
-/*
-  double *x = new double [3*nlocal];
-  int nlocalgroup = 0;
-  for (int ii = 0; ii < nlocal; ii++) {
-    if (mask[ii] & groupbit) {
-     x[3*ii+0] = atom->x[ii][0];
-     x[3*ii+1] = atom->x[ii][1];
-     x[3*ii+2] = atom->x[ii][2];
-     nlocalgroup++;
-    }
-  }
-*/
-
 // Setting up OMP
   int nthreads = 1;
 
@@ -388,17 +376,17 @@ void ComputeXRD::compute_array()
     double CosTheta = 0.0;
 
     double inners = 0.0;
-    double lp = 0.0;
+    double sqrt_lp = 0.0;
 
     if (LP == 1) {
 
     if (me == 0 && echo && screen) {
 #ifdef _OPENMP
       if (omp_get_thread_num() == 0)
-        fprintf(screen,"Applying Lorentz-Polarization Factor During XRD Calculation\n");
+        fprintf(screen,"Applying Lorentz-Polarization Factor During XRD Calculation 2\n");
 #endif
 #ifndef _OPENMP
-      fprintf(screen,"Applying Lorentz-Polarization Factor During XRD Calculation\n");
+      fprintf(screen,"Applying Lorentz-Polarization Factor During XRD Calculation 2\n");
 #endif
     }
 
@@ -422,7 +410,7 @@ void ComputeXRD::compute_array()
         Fatom1 = 0.0;
         Fatom2 = 0.0;
 
-        // Calculate the atomic structre factor by type
+        // Calculate the atomic structure factor by type
         for (int ii = 0; ii < ntypes; ii++){
           f[ii] = 0;
           for (int C = 0; C < 8 ; C+=2){
@@ -439,10 +427,10 @@ void ComputeXRD::compute_array()
           Fatom1 += f[typei] * cos(inners);
           Fatom2 += f[typei] * sin(inners);
         }
-        lp = (1 + Cos2Theta * Cos2Theta) /
-             ( CosTheta * SinTheta * SinTheta);
-        Fvec[2*n] = Fatom1 * lp;
-        Fvec[2*n+1] = Fatom2 * lp;
+        sqrt_lp = sqrt( (1 + Cos2Theta * Cos2Theta) /
+             ( CosTheta * SinTheta * SinTheta) );
+        Fvec[2*n] = Fatom1 * sqrt_lp;
+        Fvec[2*n+1] = Fatom2 * sqrt_lp;
 
         // reporting progress of calculation
         if ( echo ) {
@@ -474,7 +462,7 @@ void ComputeXRD::compute_array()
         Fatom1 = 0.0;
         Fatom2 = 0.0;
 
-        // Calculate the atomic structre factor by type
+        // Calculate the atomic structure factor by type
         for (int ii = 0; ii < ntypes; ii++){
           f[ii] = 0;
           for (int C = 0; C < 8 ; C+=2){

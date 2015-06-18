@@ -15,7 +15,7 @@
 #define LMP_COMPUTE_XRD_CONSTS_H
 
 /*
-The paramaters for analytical approximation of the atomic scattering factors
+The parameters for analytical approximation of the atomic scattering factors
 used for x-ray diffraction are gathered from the resources: 
 
 Brown P J, Fox A G, Maslen E N, O’Keefe M A and Willis B T M 2004 Intensity 
