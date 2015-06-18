@@ -1,4 +1,4 @@
-variable  A string "bulkNi"
+variable  A string bulkNi
 log		$A.log
 
 boundary        p p p
@@ -22,7 +22,7 @@ compute         SAED all saed 0.0251  Ni Kmax 0.85 Zone 0 0 0 c 1 1 1 &
 
 fix             1 all ave/histo/weights 1 1 1 10 90 200 c_XRD[1] weights c_XRD[2] &
                 mode vector file $A.hist.xrd
-fix             2 all saed/vtk 1 1 1 c_SAED  file $A_001.saed 
+fix             2 all saed/vtk 1 1 1 c_SAED file $A_001.saed 
 
 dump            1 all custom 1 $A.dump id x y z 
 run             0
