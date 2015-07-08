@@ -1,4 +1,4 @@
-/* ----------------------------------------------------------------------
+/* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    http://lammps.sandia.gov, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
@@ -13,34 +13,33 @@
 
 #ifdef FIX_CLASS
 
-FixStyle(ave/histo/weights,FixAveHistoWeights)
+FixStyle(ave/histo,FixAveHisto)
 
 #else
 
-#ifndef LMP_FIX_AVE_HISTO_WEIGHTS_H
-#define LMP_FIX_AVE_HISTO_WEIGHTS_H
+#ifndef LMP_FIX_AVE_HISTO_H
+#define LMP_FIX_AVE_HISTO_H
 
 #include "stdio.h"
 #include "fix.h"
 
 namespace LAMMPS_NS {
 
-class FixAveHistoWeights : public Fix {
+class FixAveHisto : public Fix {
  public:
-  FixAveHistoWeights(class LAMMPS *, int, char **);
-  ~FixAveHistoWeights();
+  FixAveHisto(class LAMMPS *, int, char **);
+  ~FixAveHisto();
   int setmask();
   void init();
   void setup(int);
   void end_of_step();
   double compute_vector(int);
   double compute_array(int,int);
-  void reset_timestep(bigint);
 
  private:
-  int me,nvalues, maxvalues;
+  int me,nvalues;
   int nrepeat,nfreq,irepeat;
-  bigint nvalid;
+  bigint nvalid,nvalid_last;
   int *which,*argindex,*value2index;
   char **ids;
   FILE *fp;
@@ -59,22 +58,16 @@ class FixAveHistoWeights : public Fix {
   double *vector;
   int maxatom;
 
-
-  int Size[2];
-
-  int ave,nwindow,nsum,startstep,mode;
+  int ave,nwindow,startstep,mode;
   char *title1,*title2,*title3;
   int iwindow,window_limit;
 
   void bin_one(double);
   void bin_vector(int, double *, int);
   void bin_atoms(double *, int);
-  
   void bin_one_weights(double, double);
   void bin_vector_weights(int, double *, int, double *, int);
-  void bin_atoms_weights(double *, int, double *, int);
- 
-  
+  void bin_atoms_weights(double *, int, double *, int);  
   void options(int, char **);
   void allocate_values(int);
   bigint nextvalid();
@@ -223,14 +216,14 @@ E: Variable name for fix ave/histo does not exist
 
 Self-explanatory.
 
+E: Invalid timestep reset for fix ave/histo
+
+Resetting the timestep has invalidated the sequence of timesteps this
+fix needs to process.
+
 E: Cannot open fix ave/histo file %s
 
 The specified file cannot be opened.  Check that the path and name are
 correct.
-
-E: Fix ave/histo missed timestep
-
-You cannot reset the timestep to a value beyond where the fix
-expects to next perform averaging.
 
 */
