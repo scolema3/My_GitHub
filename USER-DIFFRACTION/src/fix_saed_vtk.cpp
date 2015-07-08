@@ -316,7 +316,7 @@ void FixAveTimeSAED::init()
  
   int icompute = modify->find_compute(ids);
   if (icompute < 0)
-    error->all(FLERR,"Compute ID for fix ave/time does not exist");
+    error->all(FLERR,"Compute ID for fix saed/vtk does not exist");
 
   // need to reset nvalid if nvalid < ntimestep b/c minimize was performed
 
@@ -548,7 +548,7 @@ void FixAveTimeSAED::options(int narg, char **arg)
   int iarg = 6 + nvalues;
   while (iarg < narg) {
     if (strcmp(arg[iarg],"file") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix ave/time command");
+      if (iarg+2 > narg) error->all(FLERR,"Illegal fix saed/vtk command");
       if (me == 0) {
       
          nOutput = 0;
@@ -562,32 +562,32 @@ void FixAveTimeSAED::options(int narg, char **arg)
 
         if (fp == NULL) {
           char str[128];
-          sprintf(str,"Cannot open fix ave/time file %s",nName);
+          sprintf(str,"Cannot open fix saed/vtk file %s",nName);
           error->one(FLERR,str);
         }    
       }
       iarg += 2;
     } else if (strcmp(arg[iarg],"ave") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix ave/time command");
+      if (iarg+2 > narg) error->all(FLERR,"Illegal fix saed/vtk command");
       if (strcmp(arg[iarg+1],"one") == 0) ave = ONE;
       else if (strcmp(arg[iarg+1],"running") == 0) ave = RUNNING;
       else if (strcmp(arg[iarg+1],"window") == 0) ave = WINDOW;
-      else error->all(FLERR,"Illegal fix ave/time command");
+      else error->all(FLERR,"Illegal fix saed/vtk command");
       if (ave == WINDOW) {
-        if (iarg+3 > narg) error->all(FLERR,"Illegal fix ave/time command");
+        if (iarg+3 > narg) error->all(FLERR,"Illegal fix saed/vtk command");
         nwindow = force->inumeric(FLERR,arg[iarg+2]);
-        if (nwindow <= 0) error->all(FLERR,"Illegal fix ave/time command");
+        if (nwindow <= 0) error->all(FLERR,"Illegal fix saed/vtk command");
       }
       iarg += 2;
       if (ave == WINDOW) iarg++;
     } else if (strcmp(arg[iarg],"start") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix ave/time command");
+      if (iarg+2 > narg) error->all(FLERR,"Illegal fix saed/vtk command");
       startstep = force->inumeric(FLERR,arg[iarg+1]);
       iarg += 2;
     } else if (strcmp(arg[iarg],"overwrite") == 0) {
       overwrite = 1;
       iarg += 1;
-    } else error->all(FLERR,"Illegal fix ave/time command");
+    } else error->all(FLERR,"Illegal fix saed/vtk command");
   }
 }
 
@@ -614,5 +614,5 @@ bigint FixAveTimeSAED::nextvalid()
 
 void FixAveTimeSAED::reset_timestep(bigint ntimestep)
 {
-  if (ntimestep > nvalid) error->all(FLERR,"Fix ave/time missed timestep");
+  if (ntimestep > nvalid) error->all(FLERR,"Fix saed/vtk missed timestep");
 }

@@ -10,7 +10,7 @@ fix saed/vtk command :h3
 
 [Syntax:]
 
-fix ID group-ID ave/time/saed Nevery Nrepeat Nfreak c_ID attribute args ... keyword args ... :pre
+fix ID group-ID saed/vtk Nevery Nrepeat Nfreak c_ID attribute args ... keyword args ... :pre
 
 ID, group-ID are documented in "fix"_fix.html command :ulb,l
 ave/time/saed = style name of this fix command :l
@@ -35,27 +35,28 @@ keyword = {file} or {ave} or {start} or {file} or {overwrite}:l
 [Examples:]
 
 compute 1 all saed 0.0251 Al O Kmax 1.70 Zone 0 0 1 dR_Ewald 0.01 c 0.5 0.5 0.5
-compute 2 all saed 0.0251 Al O Kmax 1.70 Zone 0 0 0 c 0.05 0.05 0.05 manual echo
+compute 2 all saed 0.0251 Ni Kmax 1.70 Zone 0 0 0 c 0.05 0.05 0.05 manual echo
 
 fix saed/vtk 1 1 1 c_1 file Al2O3_001.saed
-fix saed/vtk 1 1 1 c_2 file Al2O3_000.saed :pre
+fix saed/vtk 1 1 1 c_2 file Ni_000.saed :pre
 
 [Description:]
 
-Time average computed intensities from compute_saed and write output to 
-a file in the 3rd generation vtk image data format for visualization 
-directly in visualization software like ParaView and VisIt. Note that 
-if no time averaging is done, this command can be used as a convenient
-way to simply output diffraction intensities at a single snapshot.
+Time average computed intensities from "compute_saed"_compute_saed.txt and 
+write output to a file in the 3rd generation vtk image data format for 
+visualization directly in parallelized visualization software packages 
+like ParaView and VisIt. Note that if no time averaging is done, this 
+command can be used as a convenient way to simply output diffraction 
+intensities at a single snapshot.
 
 To produce output in the image data vtk format ghost data is added
-outside the {Kmax} range of the diffraction compute. The ghost data is 
+outside the {Kmax} range assigned in the compute saed. The ghost data is 
 assigned a value of -1 and can be removed setting a minimum isovolume 
-of 0. SAED images can be created by visualizing a spherical slice of the
-data that is centered at R_Ewald*[h k l]/norm([h k l]), where 
-R_Ewald=1/lambda.
+of 0 within the vizualiziton software. SAED images can be created by 
+visualizing a spherical slice of the data that is centered at 
+R_Ewald*[h k l]/norm([h k l]), where R_Ewald=1/lambda.
 
-The group specified with this command is ignored. However, note that 
+The group specified within this command is ignored. However, note that 
 specified values may represent calculations performed by saed computes
 which store their own "group" definitions.
 
@@ -170,8 +171,7 @@ associated "compute_saed"_compute_saed.txt command.
 
 [Default:] 
 
-The option defaults are mode = scalar, ave = one, start = 0, no file
-output.
+The option defaults are ave = one, start = 0, no file output.
 
 :line
 
