@@ -61,7 +61,10 @@ position of each atom, fj are atomic scattering factors.
 
 Diffraction intensities are calculated on a three-dimensional mesh of 
 reciprocal lattice nodes. The mesh spacing is defined either (I)  by 
-the entire simulation domain or (II) manually using selected values.
+the entire simulation domain or (II) manually using selected values as
+shown in the 2D diagram below.
+
+:c,image(JPG/saed_mesh_small.jpg,saed_mesh.jpg)
 
 For a mesh defined by the simulation domain, a rectilinear grid is
 constructed with spacing {c}*inv(A) along each reciprocal lattice
@@ -90,7 +93,10 @@ increase the cost of computation.  Otherwise, {Zone} parameters will
 denote the z1=h, z2=k, and z3=l (in a global since) zone axis of an 
 intersecting Ewald sphere.  Diffraction intensities will only be 
 computed at the intersection of the reciprocal lattice mesh and a 
-{dR_Ewald} thick surface of the Ewald sphere.
+{dR_Ewald} thick surface of the Ewald sphere.  See the example 3D 
+intestiety data and the intersection of a [010] zone axis in the below image. 
+
+:c,image(JPG/saed_ewald_intersect_small.jpg,saed_ewald_intersect.jpg)
 
 The atomic scattering factors, fj, accounts for the reduction in 
 diffraction intensity due to Compton scattering.  Compute saed uses 
