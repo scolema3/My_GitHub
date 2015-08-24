@@ -1,18 +1,19 @@
-# stampede = TACC Stampede machine with mpiicc, MPI, FFTW, openMP, MIC offloading
+# xt5 = Cray XT5, Cray CC, native MPI, FFTW
 
 SHELL = /bin/sh
+.SUFFIXES: .cpp .d
 
 # ---------------------------------------------------------------------
 # compiler/linker settings
 # specify flags and libraries needed for your compiler
 
-CC =		mpicxx
-CCFLAGS =	-O2 -openmp -DENABLE_MIC -xhost
+CC =		mpiicpc
+CCFLAGS =	-O3 -g -openmp -xhost
 SHFLAGS =	-fPIC
 DEPFLAGS =	-M
 
-LINK =		mpicxx
-LINKFLAGS =	-O2 -liomp5 -lpthread
+LINK =		mpiicpc
+LINKFLAGS =	-O3 -liomp5 -lpthread
 LIB =           -lstdc++ -lm
 SIZE =		size
 
@@ -37,9 +38,9 @@ LMP_INC =	-DLAMMPS_GZIP
 # PATH = path for MPI library
 # LIB = name of MPI library
 
-MPI_INC =       
+MPI_INC =  -DMPICH_SKIP_MPICXX 
 MPI_PATH = 
-MPI_LIB =
+MPI_LIB =	
 
 # FFT library, OPTIONAL
 # see discussion in doc/Section_start.html#2_2 (step 6)
@@ -48,19 +49,16 @@ MPI_LIB =
 # PATH = path for FFT library
 # LIB = name of FFT library
 
-FFTW_INC =
-FFTW_LIB = 
-
 FFT_INC =       -DFFT_NONE
-FFT_PATH =
-FFT_LIB =
+FFT_PATH = 	
+FFT_LIB =	
 
-# JPEG library, OPTIONAL
+# JPEG and/or PNG library, OPTIONAL
 # see discussion in doc/Section_start.html#2_2 (step 7)
-# only needed if -DLAMMPS_JPEG listed with LMP_INC
-# INC = path for jpeglib.h
-# PATH = path for JPEG library
-# LIB = name of JPEG library
+# only needed if -DLAMMPS_JPEG or -DLAMMPS_PNG listed with LMP_INC
+# INC = path(s) for jpeglib.h and/or png.h
+# PATH = path(s) for JPEG library and/or PNG library
+# LIB = name(s) of JPEG library and/or PNG library
 
 JPG_INC =       
 JPG_PATH = 	
