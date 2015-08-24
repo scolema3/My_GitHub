@@ -1,0 +1,337 @@
+#!/bin/sh 
+
+# This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
+
+Version=0.03
+
+printf '\n  Running Version %s of %s\n' ${Version} $0
+
+# help guide
+help_ani()
+{
+  printf '
+  Usage: $0 (-Optional arguments)
+
+  Optional arguments: (Note, manual spacing always turned on)
+
+    -A account id for time charging
+       default: %s 
+    -q name of QUEUE i.e. d=debug s=standard
+       default: %s
+    -n number of NODES (each 32 processors) requested
+       default: %s
+    -t wall-time for computation in dd:hh:mm
+       default: %s
+    -M email option y or n
+       default: %s
+    -E email address for to send correspondence
+       default: %s
+  ' ${ACCOUNT} ${QUEUE} ${NODES} ${Time} ${MAIL} ${EMAIL}
+  exit 1
+}
+
+
+#############  General Default Values ############# 
+nInput=$# 
+isdef=0
+PWD=`pwd`
+
+# Naming 
+Name="${@:${#@}}"    # use last input
+InputPrefix=""
+InputSuffix=".in"
+
+# System
+CLUSTER="Shepard"
+ACCOUNT="ARLAP35513022"
+EMAIL="scolema3@gmail.com"
+QUEUE="s"
+NODES=4
+MPI="0"
+MAIL="y"
+
+# LAMMPS - General
+Application_Name=LAMMPS
+LAMMPS=\$HOME/bin/lmp_vanilla
+
+while (($#)); do
+    case "$1" in
+        -A) ACCOUNT="$2";;
+        -n) NODES="$2";;
+        -t) TIME="$2";;
+        -M) MAIL="$2";;
+        -q) QUEUE="$2";;
+        -P) MPI="$2";;
+        -E) EMAIL="$2";;
+        -*)  echo "${@:1} is not a valid input"; exit 1;;
+        *)  ;;
+    esac
+    shift
+done
+
+#################################################################
+#################################################################
+##         Defaults for Specific DOD-HPCMP Machines            ##
+#################################################################
+#################################################################
+
+
+############# Excalibur Default Values #############
+if [ $CLUSTER == "Excalibur" ]; then
+
+  if [ $QUEUE == "d" ]; then
+   QUEUE="debug"
+   Time="10"
+   if [ $NODES -gt 16 ]; then
+    NODES="16"
+   fi
+  elif [ $QUEUE == "s" ]; then
+   QUEUE="standard"
+   Time="10:00"
+   if [ $NODES -gt 256 ]; then
+    NODES="256"
+    echo "Exceded node max: -n set back to $NODES"
+   fi
+  fi
+        
+  NCPUS="32"
+  PPN="32"
+  
+  nThreads=$(( $NCPUS / $PPN ))
+  if [ $MPI == 0 ]; then
+   nMPI=$(( $PPN * $NODES ))
+  else
+   nMPI=$MPI
+  fi
+  
+  PBS_extra="
+  #PBS -l place=scatter:excl
+  "
+  PBS_time_suffix=":00"
+
+  Setup_Env=""
+
+  MPI_launch="aprun -n ${nMPI} -N ${PPN}"
+  Submit_Command=qsub
+fi
+
+
+############# Garnet Default Values #############
+if [ $CLUSTER == "Garnet" ]; then
+  
+  if [ $QUEUE == "d" ]; then
+   QUEUE="debug"
+   Time="10"
+   if [ $NODES -gt 16 ]; then
+    NODES="16"
+   fi
+  elif [ $QUEUE == "s" ]; then
+   QUEUE="standard_sm"
+   Time="10:00"
+   if [ $NODES -gt 160 ]; then
+    QUEUE="standard_lg"
+   elif [ $NODES -gt 3200 ]; then
+    NODES="3200"
+    echo "Exceded node max: -n set back to $NODES"
+    fi
+  fi
+
+  NCPUS="32"
+  PPN="32"
+  
+  nThreads=$(( $NCPUS / $PPN ))
+  if [ $MPI == 0 ]; then
+   nMPI=$(( $PPN * $NODES ))
+  else
+   nMPI=$MPI
+  fi
+  
+  PBS_extra=""  
+  PBS_time_suffix=":00"
+  
+  Setup_Env=""
+  
+  MPI_launch="aprun -n ${nMPI} -N ${PPN}"
+  Submit_Command=qsub
+  
+fi
+
+############# Shepard Default Values #############
+if [ $CLUSTER == "Shepard" ]; then
+  
+  if [ $QUEUE == "d" ]; then
+   QUEUE="debug"
+   Time="10"
+   if [ $NODES -gt 16 ]; then
+    NODES="16"
+   fi
+  elif [ $QUEUE == "s" ]; then
+   QUEUE="standard"
+   Time="24:00"
+  elif [ $QUEUE == "p" ]; then
+   QUEUE="phi"
+   Time="10:00"
+   if [ $NODES -gt 124 ]; then
+    NODES="124"
+    echo "Exceded node max: -n set back to $NODES"
+    fi    
+  fi
+
+  NCPUS="10"
+  PPN="10"
+  MIC="236"
+  
+  nThreads=$(( $NCPUS / $PPN ))
+  if [ $MPI == 0 ]; then
+   nMPI=$(( $PPN * $NODES ))
+  else
+   nMPI=$MPI
+  fi
+  
+  PBS_extra=""  
+  PBS_time_suffix=":00"
+  
+  Setup_Env=""
+  
+  MPI_launch="aprun -n ${nMPI}"
+  Submit_Command=qsub
+  
+fi
+
+############# Haise Default Values #############
+if [ $CLUSTER == "Haise" ]; then
+  
+  if [ $QUEUE == "d" ]; then
+   QUEUE="debug"
+   Time="10"
+   if [ $NODES -gt 16 ]; then
+    NODES="16"
+   fi
+  elif [ $QUEUE == "s" ]; then
+   QUEUE="standard_sm"
+   Time="10:00"
+   if [ $NODES -gt 160 ]; then
+    QUEUE="standard_lg"
+   elif [ $NODES -gt 3200 ]; then
+    NODES="3200"
+    echo "Exceded node max: -n set back to 3200"
+    fi
+  elif [ $QUEUE == "p" ]; then
+   QUEUE="phi"
+   Time="10:00"
+   if [ $NODES -gt 124 ]; then
+    NODES="124"
+    echo "Exceded node max: -n set back to $NODES"
+    fi    
+  fi
+
+  NCPUS="16"
+  PPN="16"
+  MIC="236"
+  
+  nThreads=$(( $NCPUS / $PPN ))
+  if [ $MPI == 0 ]; then
+   nMPI=$(( $PPN * $NODES ))
+  else
+   nMPI=$MPI
+  fi
+  
+  PBS_extra=""  
+  PBS_time_suffix=":00"
+  
+  Setup_Env=""
+ 
+  MPI_launch="aprun -n ${nMPI} -N ${PPN}"
+  Submit_Command=qsub
+  
+fi
+
+#################################################################
+#################################################################
+
+### Naming formulation - if like file already exists increase suffix by 1
+
+Title=`head -1 $Name | awk '{print $NF}'`
+
+FLAG=0
+test=$Title
+count=0
+while [  $FLAG == 0 ]; do
+  if [ -f run.$test ]; then
+    let count=count+1
+    test=${Title}_$count
+    else
+    FLAG=1;
+    Title=$test
+  fi
+done
+
+LammpsInput=${InputPrefix}${Title}${InputSuffix}
+
+### Create specific file for new input script
+cp ./$Name ./${LammpsInput}
+
+### PBS mail commands
+if [ $MAIL == "y" ]; then
+PBS_mail="#PBS -m abe
+#PBS -M $EMAIL"
+else
+PBS_mail="#"
+fi
+
+### Use TIME inputed on command line over default values
+if [ -z $TIME ]; then
+ echo " "
+else
+ Time=$TIME
+fi
+
+### Format time to be hh:mm:ss (at minimum)
+Ncolon=`echo "${Time}" | grep -o ":" | wc -l`
+if [ $Ncolon == 0 ]; then
+Time="00:$Time"
+fi
+
+
+##### Error Checks
+
+# If no inputs--display help
+if [ $nInput -lt "1" ]; then
+  help_ani
+fi
+
+Submit_File="run_${Title}"
+
+### Create a specific runscript for each input script
+cat > ${Submit_File} << _EOF_
+#!/bin/bash
+#PBS -N ${Title:0:9}
+#PBS -l application=${Application_Name}
+#PBS -l select=${NODES}:ncpus=${NCPUS}:mpiprocs=${PPN}
+#PBS -l walltime=${Time}${PBS_time_suffix}
+#PBS -q ${QUEUE}
+#PBS -A ${ACCOUNT}
+#PBS -j oe
+${PBS_mail}
+${PBS_extra}
+
+echo "This job was created by Version ${Version} of $0"
+
+cd ${PWD}
+
+${Setup_Env}
+
+T0="\$(date +%s)"
+${MPI_launch} ${LAMMPS} < ${LammpsInput}
+
+T1="\$((\$(date +%s)-T0))"
+printf "Compute Time : %02d:%02d:%02d:%02d\n" "\$((\$T1/86400))" "\$((\$T1/3600%24))" "\$((\$T1/60%60))" "\$((\$T1%60))"""
+
+_EOF_
+
+echo "  Submitting $Title on $CLUSTER"
+
+${Submit_Command} ${Submit_File}
+
+echo " "
+
