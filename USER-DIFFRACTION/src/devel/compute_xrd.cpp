@@ -445,7 +445,7 @@ char signal_var=me;
     int typei = 0;                     // atom type
     double Fatom1 = 0.0;               // structure factor per atom
     double Fatom2 = 0.0;               // structure factor per atom (imaginary)
-
+    double MY_PI  = 3.14159265358979323846; // pi
     double K[3];                       // Position in reciprocal space
     double dinv2 = 0.0;                // inverse spacing squared
     double dinv  = 0.0;                // inverse spacing
