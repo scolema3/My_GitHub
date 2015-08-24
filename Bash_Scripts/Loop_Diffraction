@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.23
+Version=0.24
 
 
 # help guide
@@ -63,7 +63,6 @@ Title="${@:${#@}}"    # use last input
 Submit_File=run_$Title
 
 # System
-CLUSTER="Garnet"
 ACCOUNT="ARLAP35513022"
 EMAIL="scolema3@gmail.com"
 QUEUE="s"
@@ -71,6 +70,15 @@ NODES=64
 MPI="0"
 MAIL="y"
 
+Host=`hostname`
+case ${Host:0:1} in
+  l)  CLUSTER='Garnet';;    # workstaiton, debugging
+  s)  CLUSTER='Shepard';;
+  g)  CLUSTER='Garnet';;
+  k)  CLUSTER='Kilrain';;
+  e)  CLUSTER='Excalibur';;
+  *)  "Host not recognized! "; exit 0 ;;
+esac
 
 # LAMMPS - Diffraction
 Application_Name=LAMMPS
