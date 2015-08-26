@@ -1,0 +1,116 @@
+#!/bin/sh
+# Script for increasing data trasnfer speeds from remote cluster to local
+# workstation by routing through ARL cluster. This is a temparary fix for
+# an issue that is currenlty being investigated. 
+
+
+middle=excalibur
+middle_dir=DataTransferArea_TMP
+
+help_ani()
+{
+  echo "
+        Faster scp option for ARL-APG by going through $middle
+        
+        Requires 2 inputs: 
+        
+        [[user@]host1:]file1 ... [[user@]host2:]file2
+        
+        Always uses recursive copy flag: -r
+
+        
+        "
+  exit 1
+}
+
+# If no inputs--display help
+if [ $# -ne "2" ]; then
+  help_ani
+fi
+
+Arg1=$1
+Arg2=$2
+
+# file 1 arguments
+if [[ $Arg1 == *":"* ]]; then
+   host1="${Arg1%:*}:"
+   file1=${Arg1##*:}
+   machine1="${Arg1%:*}"  
+else
+   host1=""
+   file1=$Arg1
+   machine1="local"
+fi
+
+file1name=$file1
+while [[ $file1name == *"/"* ]]; do
+   file1name=${file1name##*/}
+done
+
+# file 2 arguments
+if [[ $Arg2 == *":"* ]]; then
+   host2="${Arg2%:*}:"
+   file2=${Arg2##*:}
+   machine2="${Arg2%:*}"   
+else
+   host2=""   
+   file2=$Arg2
+   machine2="local"   
+fi
+
+file2name=$file2
+while [[ $file2name == *"/"* ]]; do
+   file2name=${file2name##*/}
+done
+
+
+
+
+
+
+
+
+
+echo "Performing SCP ${host1}${file1} ${host2}${file2}"
+
+Out="tmp_transfer_out.txt"
+
+
+
+
+
+
+
+
+
+T0="$(date +%s)"
+echo "ssh ${middle} \"mkdir -p ${middle_dir}\""
+ssh ${middle} "mkdir -p ${middle_dir}" >& $Out
+Tsetup="$(($(date +%s)-T0))"
+
+T="$(date +%s)"
+echo "scp -r ${host1}${file1} ${middle}:${middle_dir}/"
+scp -r ${host1}${file1} ${middle}:${middle_dir}/ >& $Out
+T1="$(($(date +%s)-T))"
+
+T="$(date +%s)"
+echo "scp -r ${middle}:${middle_dir}/${file1name} ${host2}${file2}"
+scp -r ${middle}:${middle_dir}/${file1name} ${host2}${file2} >& $Out
+T2="$(($(date +%s)-T))"
+
+T="$(date +%s)"
+echo "ssh ${middle} \"rm ${middle_dir}/${file1name}\""
+echo "ssh ${middle} \"rmdir ${middle_dir}\""
+ssh ${middle} "rm ${middle_dir}/${file1name}" >& $Out
+ssh ${middle} "rmdir ${middle_dir}" >& $Out
+Tclean="$(($(date +%s)-T))"
+#rm $Out
+
+Ttot="$(($(date +%s)-T0))"
+printf "          Total Transfer: %02d:%02d\n" "$(($Ttot/60%60))" "$(($Ttot%60))"
+printf "%10s to %10s: %02d:%02d\n"  "$machine1"  "$middle"    "$(($T1/60%60))" "$(($T1%60))"
+printf "%10s to %10s: %02d:%02d\n"  "$middle"    "$machine2"  "$(($T2/60%60))" "$(($T2%60))"
+printf "                   setup: %02d:%02d\n" "$(($Tsetup/60%60))" "$(($Tsetup%60))"
+printf "                clean up: %02d:%02d\n" "$(($Tclean/60%60))" "$(($Tclean%60))"
+
+
