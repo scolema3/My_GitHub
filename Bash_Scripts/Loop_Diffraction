@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.30
+Version=0.31
 
 
 # help guide
@@ -446,11 +446,9 @@ fi
 if [[ $DEBUG == "1" ]]; then 
   unset xray
   unset electron
-  xray=${xray_debug[@]}
-  electron=${electron_debug[@]}
+  xray=${xray_debug}
+  electron=${electron_debug}
 fi
-
-echo ${xray[@]}
 
 ### Process species for each type
 
