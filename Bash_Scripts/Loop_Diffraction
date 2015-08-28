@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.28
+Version=0.30
 
 
 # help guide
@@ -65,7 +65,7 @@ Submit_File=run_$Title
 # System
 ACCOUNT="ARLAP35513022"
 EMAIL="scolema3@gmail.com"
-QUEUE="s"
+QUEUE="p"
 NODES=4
 MPI="0"
 MAIL="y"
@@ -343,7 +343,7 @@ if [ $CLUSTER == "Haise"  ] || [ $CLUSTER == "Kilrain"  ]; then
     echo "Exceded node max: -n set back to $NODES"
    fi   
   elif [ ${QUEUE:0:1} == "p" ]; then
-   QUEUE="phi64"
+   QUEUE="phi"
    Time="10:00"
    Setup_Env="
 export OMP_NUM_THREADS=${nThreads}  
