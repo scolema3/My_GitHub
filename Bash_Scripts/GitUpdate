@@ -1,0 +1,9 @@
+#!/bin/sh 
+
+machine_list=("shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
+
+for machine in ${machine_list[*]}; do
+  ssh ${machine} "source ~/.bashrc;cd ~/My_GitHub/;git pull" >& .tmp
+  echo "${machine} status: `tail -n 1 .tmp`"
+done
+rm .tmp 
