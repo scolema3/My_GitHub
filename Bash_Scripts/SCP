@@ -5,7 +5,7 @@
 
 
 middle=excalibur
-middle_dir=DataTransferArea_TMP
+middle_dir=.DataTransferArea_TMP
 
 help_ani()
 {
@@ -36,10 +36,12 @@ if [[ $Arg1 == *":"* ]]; then
    host1="${Arg1%:*}:"
    file1=${Arg1##*:}
    machine1="${Arg1%:*}"  
+   transfer1="mpscp"      
 else
    host1=""
    file1=$Arg1
    machine1="local"
+   transfer1="scp"
 fi
 
 file1name=$file1
@@ -52,10 +54,12 @@ if [[ $Arg2 == *":"* ]]; then
    host2="${Arg2%:*}:"
    file2=${Arg2##*:}
    machine2="${Arg2%:*}"   
+   transfer2="mpscp"   
 else
    host2=""   
    file2=$Arg2
-   machine2="local"   
+   machine2="local" 
+   transfer2="scp"  
 fi
 
 file2name=$file2
@@ -63,45 +67,34 @@ while [[ $file2name == *"/"* ]]; do
    file2name=${file2name##*/}
 done
 
-
-
-
-
-
-
-
-
 echo "Performing SCP ${host1}${file1} ${host2}${file2}"
 
-Out="tmp_transfer_out.txt"
-
-
-
-
-
-
-
+Timestamp=`date +%Y%m%d%H%M%S`
+Out="tmp_transfer_$Timestamp.txt"
 
 
 T0="$(date +%s)"
-echo "ssh ${middle} \"mkdir -p ${middle_dir}\""
-ssh ${middle} "mkdir -p ${middle_dir}" >& $Out
+echo "ssh ${middle} \"mkdir -p ${middle_dir}/${Timestamp}\""
+ssh ${middle} "mkdir -p ${middle_dir}/${Timestamp}" >& $Out
 Tsetup="$(($(date +%s)-T0))"
 
 T="$(date +%s)"
-echo "scp -r ${host1}${file1} ${middle}:${middle_dir}/"
-scp -r ${host1}${file1} ${middle}:${middle_dir}/ >& $Out
+echo "${transfer1} -r ${host1}${file1} ${middle}:${middle_dir}/${Timestamp}/"
+`${transfer1} -r ${host1}${file1} ${middle}:${middle_dir}/${Timestamp}/ >& $Out`
 T1="$(($(date +%s)-T))"
 
+exit 1
+
+
 T="$(date +%s)"
-echo "scp -r ${middle}:${middle_dir}/${file1name} ${host2}${file2}"
-scp -r ${middle}:${middle_dir}/${file1name} ${host2}${file2} >& $Out
+echo "${transfer2} -r ${middle}:${middle_dir}/${Timestamp}/${file1name} ${host2}${file2}"
+`${transfer2} -r ${middle}:${middle_dir}/${Timestamp}/${file1name} ${host2}${file2} >& $Out`
 T2="$(($(date +%s)-T))"
 
 T="$(date +%s)"
-echo "ssh ${middle} \"rm ${middle_dir}/${file1name}\""
+echo "ssh ${middle} \"rm -rf ${middle_dir}/${Timestamp}\""
 echo "ssh ${middle} \"rmdir ${middle_dir}\""
-ssh ${middle} "rm ${middle_dir}/${file1name}" >& $Out
+ssh ${middle} "rm -rf ${middle_dir}/${Timestamp}" >& $Out
 ssh ${middle} "rmdir ${middle_dir}" >& $Out
 Tclean="$(($(date +%s)-T))"
 #rm $Out
