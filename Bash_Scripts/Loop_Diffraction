@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.26
+Version=0.28
 
 
 # help guide
@@ -66,7 +66,7 @@ Submit_File=run_$Title
 ACCOUNT="ARLAP35513022"
 EMAIL="scolema3@gmail.com"
 QUEUE="s"
-NODES=64
+NODES=4
 MPI="0"
 MAIL="y"
 
@@ -97,6 +97,11 @@ SAED=1
 xray=(1.541838 30 110 0.0035 0.0035 0.0035 1 3000)
 # elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald
 electron=(0.0251 1.25 0 0 0 0.0075 0.0075 0.0075 0.0015)
+
+# Defaults for debugging
+DEBUG=0;
+xray_debug=(1.541838 30 90 0.025 0.025 0.025 1 1000)
+electron_debug=(0.0251 0.85 0 0 0 0.025 0.025 0.025 0.0015)
 
 read_xray_args()
 {
@@ -140,6 +145,7 @@ while (($#)); do
 
         -xrd)  XRD="$2";;
         -saed) SAED="$2";;
+        -debug) DEBUG=1;;
         -D) Diffraction_Base="$2";;
         -S) read_species_args "${@:2}";;
         -e) read_electron_args "${@:2}";;
@@ -434,6 +440,17 @@ fi
 #################################################################
 #################################################################
 
+
+### Use debug default options 
+
+if [[ $DEBUG == "1" ]]; then 
+  unset xray
+  unset electron
+  xray=${xray_debug[@]}
+  electron=${electron_debug[@]}
+fi
+
+echo ${xray[@]}
 
 ### Process species for each type
 
