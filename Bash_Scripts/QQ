@@ -1,0 +1,27 @@
+#!/bin/sh 
+
+user1=scoleman
+user2=djf92
+machine_list=("shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
+
+
+Qt=0
+Rt=0
+Ht=0
+for machine in ${machine_list[*]}; do
+  ssh ${machine} "qstat -u $user1; qstat -u $user2 " >& .tmp
+  sed -n '/Job ID/,$p' .tmp > .tmp2
+  Q=`grep -s " Q " .tmp2 | wc -l`
+  R=`grep -s " R " .tmp2 | wc -l`
+  H=`grep -s " H " .tmp2 | wc -l`
+  T=$(( $Q + $R + $H )) 
+  cat .tmp2
+  echo " "
+  echo "Jobs on ${machine}: $T Total - $R Running - $Q Queued - $H Held"
+  Qt=$(( $Qt + $Q ))
+  Rt=$(( $Rt + $R ))
+  Ht=$(( $Ht + $H ))  
+done
+  T=$(( $Qt + $Rt + $Ht )) 
+  echo "Summary All Jobs: $Tt Total - $Rt Running - $Qt Queued - $Ht Held"
+rm .tmp .tmp2
