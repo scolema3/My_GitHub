@@ -589,7 +589,7 @@ run             0
 
 _EOF_
 
-
+Submit_File="run.${Title}"
 
 ### Create a specific runscript for each input script
 cat > ${Submit_File} << _EOF_
