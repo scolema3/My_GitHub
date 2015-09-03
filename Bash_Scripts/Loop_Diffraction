@@ -2,8 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.31
-
+Version=0.34
 
 # help guide
 help_ani()
@@ -25,6 +24,7 @@ help_ani()
 
   Optional arguments: (Note, manual spacing always turned on)
   
+ -- Diffraction  
     -XRD 1/0 switch to compute xrd
       default: %s
     -SAED 1/0 switch to compute electron diffraction
@@ -35,74 +35,89 @@ help_ani()
        default: %s %s %s %s %s %s %s %s
     -e elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald
        default: %s %s %s %s %s %s %s %s %s
-       
+    -debug an optional flag for quick compute settings
+
+ -- Job Submission       
     -A account id for time charging
        default: %s 
-    -q name of QUEUE i.e. d=debug s=standard
+    -q name of queue i.e. d=debug s=standard p=phi
        default: %s
-    -n number of NODES (each 32 processors) requested
+    -n number of nodes requested (%s cores)
        default: %s
+    -P control the number of processors (MPI, OpenMP, #)
+       default: %s       
     -t wall-time for computation in dd:hh:mm
        default: %s
     -M email option y or n
        default: %s
     -E email address for to send correspondence
        default: %s
-  ' ${XRD} ${SAED} ${Diffraction_Base} "${xray[@]}"  "${electron[@]}" ${ACCOUNT} ${QUEUE} ${NODES} ${Time} ${MAIL} ${EMAIL}
+  ' ${XRD} ${SAED} ${Diffraction_Base} "${xray[@]}" "${electron[@]}" ${ACCOUNT} ${QUEUE} ${NCPUS} ${NODES} ${PPN_SET} ${Time} ${MAIL} ${EMAIL}
   exit 1
 }
-
 
 #############  General Default Values ############# 
 nInput=$# 
 isdef=0
 PWD=`pwd`
 
-# Naming 
-Title="${@:${#@}}"    # use last input
-Submit_File=run_$Title
+# LAMMPS
+Application_Name=LAMMPS
+LAMMPS=\$HOME/bin/lmp_vanilla
 
-# System
+# Job
+QUEUE="s"
+NODES=4
+Time_Debug="00:10"
+Time_Standard="10:00"
 ACCOUNT="ARLAP35513022"
 EMAIL="scolema3@gmail.com"
-QUEUE="p"
-NODES=4
-MPI="0"
 MAIL="y"
 
+# PPN_SET=OMP for using max OpenMP Threads
+# PPN_SET=MPI for using max MPI processes
+# PPN_SET=# for directly specifing # of processors per node
+PPN_SET=OMP
+
+# System
 Host=`hostname`
-case ${Host:0:1} in
-  l)  CLUSTER='Garnet';;    # workstaiton, debugging
-  s)  CLUSTER='Shepard';;
-  a)  CLUSTER='Armstrong';;
-  g)  CLUSTER='Garnet';;
-  k)  CLUSTER='Kilrain';;
-  e)  CLUSTER='Excalibur';;
+case ${Host} in
+  ls*)        CLUSTER='Garnet';;    # workstaiton, debugging
+  shepard*)   CLUSTER='Shepard';;
+  armstrong*) CLUSTER='Armstrong';;
+  garnet*)    CLUSTER='Garnet';;
+  k*)         CLUSTER='Kilrain';;
+  h*)         CLUSTER='Haise';;
+  excalibur*) CLUSTER='Excalibur';;
   *)  "Host not recognized! "; exit 0 ;;
 esac
 
-# LAMMPS - Diffraction
-Application_Name=LAMMPS
-LAMMPS=\$HOME/bin/lmp_diff
-
+# Lammps Structure Files
 Find1=dump
 Find2=data
+
+# Loop Input/Output Names
 Input=tmp_Input
 Output=tmp_Output
 
+# Diffraction Options
+# Master Diffraction File
 Diffraction_Base=Master_Diffraction.in
+
+# 1/0 (on/off) for including each specific compute 
 XRD=1
-SAED=1 
+SAED=1
+DEBUG=0
+
 # xlambda 2ThetaMin 2ThetaMax xRes0 xRes1 xRes2 LP nBins
 xray=(1.541838 30 110 0.0035 0.0035 0.0035 1 3000)
+xray_debug=(1.541838 30 90 0.025 0.025 0.025 1 1000)
+
 # elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald
 electron=(0.0251 1.25 0 0 0 0.0075 0.0075 0.0075 0.0015)
-
-# Defaults for debugging
-DEBUG=0;
-xray_debug=(1.541838 30 90 0.025 0.025 0.025 1 1000)
 electron_debug=(0.0251 0.85 0 0 0 0.025 0.025 0.025 0.0015)
 
+# Functions to read in input appropriately
 read_xray_args()
 {
     unset xray
@@ -133,6 +148,7 @@ read_species_args()
     fi
 }
 
+# Optional input flags
 while (($#)); do
     case "$1" in
         -A) ACCOUNT="$2";;
@@ -140,7 +156,7 @@ while (($#)); do
         -t) TIME="$2";;
         -M) MAIL="$2";;
         -q) QUEUE="$2";;
-        -P) MPI="$2";;
+        -P) PPN_SET="$2";;
         -E) EMAIL="$2";;
 
         -xrd)  XRD="$2";;
@@ -160,7 +176,6 @@ done
 printf '\n  Running Version %s of %s on %s \n' ${Version} $0 ${CLUSTER}
 
 
-
 #################################################################
 #################################################################
 ##         Defaults for Specific DOD-HPCMP Machines            ##
@@ -172,29 +187,32 @@ printf '\n  Running Version %s of %s on %s \n' ${Version} $0 ${CLUSTER}
 if [ $CLUSTER == "Excalibur" ]; then
 
   ## Architecture and Environment
-  NCPUS="32"
-  PPN="2"
-  nThreads=$(( $NCPUS / $PPN ))
-
-  if [ $MPI == 0 ]; then
-   nMPI=$(( $PPN * $NODES ))
+  NCPUS=32
+  
+  if [ ${PPN_SET:0:1} == "M" ]; then
+   PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+   PPN=2
   else
-   nMPI=$MPI
+   PPN=${PPN_SET}
   fi
+  
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
 
-  Setup_Env="export OMP_NUM_THREADS=${nThreads}"
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
 
   ## Specific Queue Options ##
   if [ ${QUEUE:0:1} == "d" ]; then
    QUEUE="debug"
-   Time="00:10"
+   Time=${Time_Debug}
    if [ $NODES -gt 16 ]; then
-    NODES="16"
+    NODES=16
     echo "Exceded node max: -n set back to $NODES"
    fi
   elif [ ${QUEUE:0:1} == "s" ]; then
    QUEUE="standard"
-   Time="10:00"
+   Time=${Time_Standard}
   else
    echo "Unknown queue requested for $CLUSTER"
    exit 1   
@@ -203,7 +221,7 @@ if [ $CLUSTER == "Excalibur" ]; then
   ## PBS and Submission ##
   PBS_extra="#PBS -l place=scatter:excl"
 
-  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nThreads}"
+  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP}"
   Submit_Command=qsub
 fi
 
@@ -212,32 +230,35 @@ fi
 if [ $CLUSTER == "Garnet" ]; then
   
   ## Architecture and Environment
-  NCPUS="32"
-  PPN="2"
-  nThreads=$(( $NCPUS / $PPN ))
-
-  if [ $MPI == 0 ]; then
-   nMPI=$(( $PPN * $NODES ))
+  NCPUS=32
+  
+  if [ ${PPN_SET:0:1} == "M" ]; then
+   PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+   PPN=2
   else
-   nMPI=$MPI
+   PPN=${PPN_SET}
   fi
+  
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
 
-  Setup_Env="export OMP_NUM_THREADS=${nThreads}"
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
 
   ## Specific Queue Options ##    
   if [ ${QUEUE:0:1} == "d" ]; then
    QUEUE="debug"
-   Time="00:10"
+   Time=${Time_Debug}
    if [ $NODES -gt 256 ]; then
-    NODES="256"
+    NODES=256
    fi
   elif [ ${QUEUE:0:1} == "s" ]; then
    QUEUE="standard_sm"
-   Time="24:00"
+   Time=${Time_Standard}
    if [ $NODES -gt 160 ]; then
     QUEUE="standard_lg"
    elif [ $NODES -gt 3200 ]; then
-    NODES="3200"
+    NODES=3200
     echo "Exceded node max: -n set back to $NODES"
     fi
   else
@@ -248,7 +269,7 @@ if [ $CLUSTER == "Garnet" ]; then
   ## PBS and Submission ##  
   PBS_extra=""  
   
-  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nThreads}"
+  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP}"
   Submit_Command=qsub
 fi
 
@@ -257,46 +278,48 @@ fi
 if [ $CLUSTER == "Shepard" ] || [ $CLUSTER == "Armstrong" ] ; then
   
   ## Architecture and Environment
-  NCPUS="10"
-  PPN="1"
-  MIC="236"
-  nThreads=$(( $NCPUS / $PPN ))
+  NCPUS=10
+  MIC=236
 
-  if [ $MPI == 0 ]; then
-   nMPI=$(( $PPN * $NODES ))
+  if [ ${PPN_SET:0:1} == "M" ]; then
+   PPN=${NCPUS}
+  elif [ $PPN_SET = ]; then
+   PPN=1
   else
-   nMPI=$MPI
+   PPN=${PPN_SET}
   fi
-
-  Setup_Env="export OMP_NUM_THREADS=${nThreads}"
+  
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
   
   ## Specific Queue Options ## 
   if [ ${QUEUE:0:1} == "d" ]; then
    QUEUE="debug"
-   Time="00:10"
+   Time=${Time_Debug}
    if [ $NODES -gt 150 ]; then
-    NODES="150"
+    NODES=150
     echo "Exceded node max: -n set back to $NODES"
    fi
   elif [ ${QUEUE:0:1} == "s" ]; then
    QUEUE="standard"
-   Time="10:00"
+   Time=${Time_Standard}
    if [ $NODES -gt 480 ]; then
-    NODES="480"
+    NODES=480
     echo "Exceded node max: -n set back to $NODES"
    fi
   elif [ ${QUEUE:0:1} == "p" ]; then
    QUEUE="phi"
-   Time="10:00"
+   Time=${Time_Standard}
    Setup_Env="
-export OMP_NUM_THREADS=${nThreads}  
-
+export OMP_NUM_THREADS=${nOMP}  
 export MIC_ENV_PREFIX=PHI
-export PHI_OMP_NUM_THREADS=$MIC
+export PHI_OMP_NUM_THREADS=${MIC}
 export PHI_KMP_AFFINITY=\"granularity=fine,compact\"
 export PHI_KMP_PLACE_THREADS=\"59c,4t\" "   
    if [ $NODES -gt 124 ]; then
-    NODES="124"
+    NODES=124
     echo "Exceded node max: -n set back to $NODES"
     fi    
   fi
@@ -304,7 +327,7 @@ export PHI_KMP_PLACE_THREADS=\"59c,4t\" "
   ## PBS and Submission ##  
   PBS_extra=""  
   
-  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nThreads} -cc none"
+  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP} -cc none"
   Submit_Command=qsub
   
 fi
@@ -314,45 +337,48 @@ fi
 if [ $CLUSTER == "Haise"  ] || [ $CLUSTER == "Kilrain"  ]; then
 
   ## Architecture and Environment
-  NCPUS="16"
-  PPN="1"
-  MIC="236"
-  nThreads=$(( $NCPUS / $PPN ))
+  NCPUS=16
+  MIC=236
 
-  if [ $MPI == 0 ]; then
-   nMPI=$(( $PPN * $NODES ))
+  if [ ${PPN_SET:0:1} == "M" ]; then
+   PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+   PPN=1
   else
-   nMPI=$MPI
+   PPN=${PPN_SET}
   fi
+  
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
 
-  Setup_Env="export OMP_NUM_THREADS=${nThreads}"
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
   
   ## Specific Queue Options ##     
   if [ ${QUEUE:0:1} == "d" ]; then
    QUEUE="debug"
-   Time="00:10"
+   Time=${Time_Debug}
    if [ $NODES -gt 64 ]; then
-    NODES="64"
+    NODES=64
     echo "Exceded node max: -n set back to $NODES"
    fi
   elif [ ${QUEUE:0:1} == "s" ]; then
    QUEUE="standard"
-   Time="10:00"
+   Time=${Time_Standard}
    if [ $NODES -gt 256 ]; then
-    NODES="256"
+    NODES=256
     echo "Exceded node max: -n set back to $NODES"
    fi   
   elif [ ${QUEUE:0:1} == "p" ]; then
    QUEUE="phi"
-   Time="10:00"
+   Time=${Time_Standard}
    Setup_Env="
-export OMP_NUM_THREADS=${nThreads}  
+export OMP_NUM_THREADS=${nOMP}  
 export MIC_ENV_PREFIX=MIC
-export MIC_OMP_NUM_THREADS=$MIC
+export MIC_OMP_NUM_THREADS=${MIC}
 export MIC_KMP_AFFINITY=\"granularity=fine,compact\"
 export MIC_KMP_PLACE_THREADS=\"59c,4t\" "        
    if [ $NODES -gt 12 ]; then
-    NODES="12"
+    NODES=12
     echo "Exceded node max: -n set back to $NODES"
    fi
   else
@@ -384,16 +410,15 @@ PBS_mail="#"
 fi
 
 ### Use TIME inputed on command line over default values
-if [ -z $TIME ]; then
- echo " "
-else
+if [ -v $TIME ]; then
  Time=$TIME
 fi
+
 
 ### Format time to be hh:mm:ss (at minimum)
 Ncolon=`echo "${Time}" | grep -o ":" | wc -l`
 if [ $Ncolon == 0 ]; then
-Time="00:$Time"
+ Time="00:$Time"
 fi
 PBS_time_suffix=":00"
 
