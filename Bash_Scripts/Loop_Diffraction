@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.37
+Version=0.38
 
 # help guide
 help_ani()
@@ -285,7 +285,7 @@ if [ $CLUSTER == "Shepard" ] || [ $CLUSTER == "Armstrong" ] ; then
 
   if [ ${PPN_SET:0:1} == "M" ]; then
    PPN=${NCPUS}
-  elif [ $PPN_SET = ]; then
+  elif [ $PPN_SET = "O"]; then
    PPN=1
   else
    PPN=${PPN_SET}

@@ -1,0 +1,26 @@
+#!/bin/sh -x
+
+Clean=0;
+machine_list=("shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
+
+while (($#)); do
+    case "$1" in
+        -clean) Clean=1;;
+        -*)  echo "${@:1} is not a valid input"; exit 1;;
+        *)  ;;
+    esac
+    shift
+done
+
+
+for machine in ${machine_list[*]}; do
+echo $machine
+  if [ "$Clean" == "1" ]; then
+    ssh ${machine} "cd ~/Lammps/Diffraction/src;  git pull; make package-update; cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ ; Makefile=\`ls lmp_*\`; Makefile=\"\${Makefile#*lmp_}\"; Makefile=\`echo \$Makefile | sed -r \"s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g\"\`; make clean-all; eval \"make \${Makefile} -j12\" "
+  else
+    ssh ${machine} "cd ~/Lammps/Diffraction/src;  git pull; make package-update; cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ ; Makefile=\`ls lmp_*\`; Makefile=\"\${Makefile#*lmp_}\"; Makefile=\`echo \$Makefile | sed -r \"s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g\"\`; eval \"make \${Makefile} -j12\" "
+  fi
+done
+
+
+
