@@ -10,7 +10,9 @@ printf '\n  Running Version %s of %s\n' ${Version} $0
 help_ani()
 {
   printf '
-  Usage: $0 (-Optional arguments)
+  Usage: Qlammps (-Optional arguments) LAMMPS_INPUT
+
+  The last argument is the LAMMPS input deck
 
   Optional arguments:
 

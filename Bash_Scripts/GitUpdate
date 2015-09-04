@@ -4,6 +4,18 @@ machine_list=("shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garn
 
 for machine in ${machine_list[*]}; do
   ssh ${machine} "source ~/.bashrc;cd ~/My_GitHub/;git pull" >& .tmp
+ 
+  error1=`cat .tmp | grep "Could not resolve hostname" | wc -l`
+   if [ $error1 != "0" ]; then 
+   echo "error1 hit"
+   ssh ${machine} "source ~/.bashrc;cd ~/My_GitHub/;git pull" >& .tmp
+   error1=`cat .tmp | grep "Could not resolve hostname" | wc -l` 
+   if [ $error1 != "0" ]; then  
+    echo "Could not resolve hostname on ${machine}"
+    exit 1
+   fi
+  fi 
+  
   echo "${machine} status: `tail -n 1 .tmp`"
 done
 rm .tmp 

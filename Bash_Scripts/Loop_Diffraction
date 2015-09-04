@@ -2,13 +2,13 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.35
+Version=0.36
 
 # help guide
 help_ani()
 {
   printf '
-  Usage: $0 -S Elements (-Optional arguments) Job_Title
+  Usage: Loop_Diffraction -S Elements (-Optional arguments) Job_Title
 
   The last argument is the file name for the LAMMPS input deck
 
@@ -412,7 +412,7 @@ PBS_mail="#"
 fi
 
 ### Use TIME inputed on command line over default values
-if [ -v $TIME ]; then
+if [ -n "$TIME" ]; then
  Time=$TIME
 fi
 
@@ -434,7 +434,8 @@ fi
 # If no inputs--display help
 if [ ${#species[@]} -lt "1" ]; then
   printf '
-  Species must be defined using the -S switch! See guide:
+  Species must be defined using the -S switch!
+  See guide:
   '
   help_ani
 fi
@@ -442,7 +443,8 @@ fi
 # If no inputs--display help
 if [ ${#xray[@]} -ne "8" ]; then
   printf '
-  Must have 6 parameters after the -x switch! See guide:
+  Must have 6 parameters after the -x switch!
+  See guide:
   '
   help_ani
 fi
@@ -450,7 +452,8 @@ fi
 # If no inputs--display help
 if [ ${#electron[@]} -ne "9" ]; then
   printf '
-  Must have 9 parameters after the -e switch! See guide:
+  Must have 9 parameters after the -e switch!
+  See guide:
   '
   help_ani
 fi
