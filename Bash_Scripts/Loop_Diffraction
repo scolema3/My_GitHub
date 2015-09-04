@@ -65,7 +65,7 @@ Title="${@: -1}"
 
 # LAMMPS
 Application_Name=LAMMPS
-LAMMPS=\$HOME/bin/lmp_vanilla
+LAMMPS=\$HOME/bin/lmp_diff
 
 # Job
 QUEUE="s"
