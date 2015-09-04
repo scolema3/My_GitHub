@@ -474,22 +474,10 @@ fi
 ### Use debug default options 
 
 if [[ $DEBUG == "1" ]]; then 
-
-echo ${xray[0]}
-echo ${xray[2]}
-echo ${xray[4]}
-
-
   unset xray
   unset electron
   xray=(${xray_debug[@]})
   electron=(${electron_debug[@]})
-  
-echo $xray 
-echo ${xray[0]}
-echo ${xray[2]}
-echo ${xray[4]}  
-  echo $electron
 fi
 
 ### Process species for each type

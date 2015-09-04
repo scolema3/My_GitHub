@@ -10,6 +10,18 @@ Rt=0
 Ht=0
 for machine in ${machine_list[*]}; do
   ssh ${machine} "qstat -u $user1; qstat -u $user2 " >& .tmp
+
+  error1=`cat .tmp | grep "Could not resolve hostname" | wc -l`
+   if [ $error1 != "0" ]; then 
+   ssh ${machine} "qstat -u $user1; qstat -u $user2 " >& .tmp
+   error1=`cat .tmp | grep "Could not resolve hostname" | wc -l` 
+   if [ $error1 != "0" ]; then  
+    echo "Could not resolve hostname on ${machine}"
+    exit 1
+   fi
+  fi 
+  
+  
   sed -n '/Job ID/,$p' .tmp > .tmp2
   Q=`grep -s " Q " .tmp2 | wc -l`
   R=`grep -s " R " .tmp2 | wc -l`

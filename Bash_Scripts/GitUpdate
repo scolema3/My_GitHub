@@ -7,7 +7,6 @@ for machine in ${machine_list[*]}; do
  
   error1=`cat .tmp | grep "Could not resolve hostname" | wc -l`
    if [ $error1 != "0" ]; then 
-   echo "error1 hit"
    ssh ${machine} "source ~/.bashrc;cd ~/My_GitHub/;git pull" >& .tmp
    error1=`cat .tmp | grep "Could not resolve hostname" | wc -l` 
    if [ $error1 != "0" ]; then  
