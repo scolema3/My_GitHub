@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.08
+Version=0.09
 
 printf '\n  Running Version %s of %s\n' ${Version} $0
 
@@ -62,12 +62,12 @@ MAIL="y"
 # PPN_SET=OMP for using max OpenMP Threads
 # PPN_SET=MPI for using max MPI processes
 # PPN_SET=# for directly specifing # of processors per node
-PPN_SET=OMP
+PPN_SET=M
 
 # System
 Host=`hostname`
 case ${Host} in
-  ls*)        CLUSTER='Garnet';;    # workstaiton, debugging
+  ls*)        CLUSTER='Spirit';;    # workstaiton, debugging
   shepard*)   CLUSTER='Shepard';;
   armstrong*) CLUSTER='Armstrong';;
   garnet*)    CLUSTER='Garnet';;
@@ -400,7 +400,7 @@ PBS_mail="#"
 fi
 
 ### Use TIME inputed on command line over default values
-if [ -v $TIME ]; then
+if [ -n "$TIME" ]; then
  Time=$TIME
 fi
 
