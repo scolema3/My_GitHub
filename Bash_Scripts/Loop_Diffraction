@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.38
+Version=0.39
 
 # help guide
 help_ani()
@@ -91,6 +91,7 @@ case ${Host} in
   k*)         CLUSTER='Kilrain';;
   h*)         CLUSTER='Haise';;
   excalibur*) CLUSTER='Excalibur';;
+  spirit*)   CLUSTER='Spirit';;  
   *)  "Host not recognized! "; exit 0 ;;
 esac
 
@@ -224,6 +225,52 @@ if [ $CLUSTER == "Excalibur" ]; then
   PBS_extra="#PBS -l place=scatter:excl"
 
   MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP}"
+  Submit_Command=qsub
+fi
+
+
+############# Spirit Default Values #############
+if [ $CLUSTER == "Spirit" ]; then
+  
+  ## Architecture and Environment
+  NCPUS=16
+  
+  if [ ${PPN_SET:0:1} == "M" ]; then
+   PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+   PPN=2
+  else
+   PPN=${PPN_SET}
+  fi
+  
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+
+  ## Specific Queue Options ##    
+  if [ ${QUEUE:0:1} == "d" ]; then
+   QUEUE="debug"
+   Time=${Time_Debug}
+   if [ $NODES -gt 46 ]; then
+    NODES=46
+   fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+   QUEUE="standard"
+   Time=${Time_Standard}
+   if [ $NODES -gt 2295 ]; then
+    NODES=2295
+    echo "Exceded node max: -n set back to $NODES"
+    fi
+  else
+   echo "Unknown queue requested for $CLUSTER"
+   exit 1      
+  fi
+
+  ## PBS and Submission ##  
+  PBS_extra=""  
+  
+  MPI_launch="mpiexec_mpt -n ${nMPI} omplace"
   Submit_Command=qsub
 fi
 
