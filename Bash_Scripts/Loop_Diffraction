@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.39
+Version=0.40
 
 # help guide
 help_ani()
@@ -35,6 +35,8 @@ help_ani()
        default: %s %s %s %s %s %s %s %s
     -e elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald
        default: %s %s %s %s %s %s %s %s %s
+    -R replicate simulation by nx ny nz
+       default: %s %s %s       
     -debug an optional flag for quick compute settings
 
  -- Job Submission       
@@ -52,7 +54,7 @@ help_ani()
        default: %s
     -E email address for to send correspondence
        default: %s
-  ' ${XRD} ${SAED} ${Diffraction_Base} "${xray[@]}" "${electron[@]}" ${ACCOUNT} ${QUEUE} ${NCPUS} ${NODES} ${PPN_SET} ${Time} ${MAIL} ${EMAIL}
+  ' ${XRD} ${SAED} ${Diffraction_Base} "${xray[@]}" "${electron[@]}" "${repeat[@]}" ${ACCOUNT} ${QUEUE} ${NCPUS} ${NODES} ${PPN_SET} ${Time} ${MAIL} ${EMAIL}
   exit 1
 }
 
@@ -120,6 +122,9 @@ xray_debug=(1.541838 30 90 0.025 0.025 0.025 1 1000)
 electron=(0.0251 1.25 0 0 0 0.0075 0.0075 0.0075 0.0015)
 electron_debug=(0.0251 0.85 0 0 0 0.025 0.025 0.025 0.0015)
 
+# replicate in the x y and z directions
+repeat=(1 1 1)
+
 # Functions to read in input appropriately
 read_xray_args()
 {
@@ -151,6 +156,16 @@ read_species_args()
     fi
 }
 
+read_repeat_args()
+{
+    unset repeat
+    while (($#)) && [[ $1 != -* ]]; do  repeat+=("$1"); shift; done
+    # Avoid assigning title to repeat (last value)
+    if [ "$Title" == "${repeat[${#repeat[@]}-1]}" ]; then
+      unset repeat[${#repeat[@]}-1]
+    fi 
+}
+
 # Optional input flags
 while (($#)); do
     case "$1" in
@@ -169,6 +184,7 @@ while (($#)); do
         -S) read_species_args "${@:2}";;
         -e) read_electron_args "${@:2}";;
         -x) read_xray_args "${@:2}";;
+        -R) read_repeat_args "${@:2}";;        
         -*)  echo "${@:1} is not a valid input"; exit 1;;
         *)  ;;
 
@@ -478,7 +494,7 @@ if [ $nInput -lt "1" ]; then
   help_ani
 fi
 
-# If no inputs--display help
+# If incorrect inputs--display help
 if [ ${#species[@]} -lt "1" ]; then
   printf '
   Species must be defined using the -S switch!
@@ -487,7 +503,7 @@ if [ ${#species[@]} -lt "1" ]; then
   help_ani
 fi
 
-# If no inputs--display help
+# If incorrect inputs--display help
 if [ ${#xray[@]} -ne "8" ]; then
   printf '
   Must have 6 parameters after the -x switch!
@@ -496,10 +512,19 @@ if [ ${#xray[@]} -ne "8" ]; then
   help_ani
 fi
 
-# If no inputs--display help
+# If incorrect inputs--display help
 if [ ${#electron[@]} -ne "9" ]; then
   printf '
   Must have 9 parameters after the -e switch!
+  See guide:
+  '
+  help_ani
+fi
+
+# If incorrect inputs--display help
+if [ ${#repeat[@]} -ne "3" ]; then
+  printf '
+  Must have 3 parameters after the -R switch!
   See guide:
   '
   help_ani
@@ -620,6 +645,7 @@ lattice         none 1.0
 SED_READ_STRUCT_SED
 SED_ASSIGN_MASS_SED
 
+replicate      ${repeat[0]} ${repeat[0]} ${repeat[0]}
 atom_modify    sort 0 0.0
 comm_style     tiled
 balance        0.9 rcb  

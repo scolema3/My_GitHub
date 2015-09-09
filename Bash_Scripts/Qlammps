@@ -42,7 +42,7 @@ PWD=`pwd`
 
 # LAMMPS
 Application_Name=LAMMPS
-LAMMPS=\$HOME/bin/lmp_vanilla
+LAMMPS=\$HOME/bin/lmp_diff
 
 # Naming 
 Name="${@:${#@}}"    # use last input
