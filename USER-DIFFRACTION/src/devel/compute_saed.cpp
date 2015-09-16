@@ -77,8 +77,6 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
     error->all(FLERR,"Compute SAED does not work with 2d structures");
   if (narg < 4+ntypes) 
     error->all(FLERR,"Illegal Compute SAED Command");
-  if (triclinic == 1) 
-    error->all(FLERR,"Compute SAED does not work with triclinic structures"); 
 
   vector_flag = 1;
   extvector = 0;
@@ -187,6 +185,8 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   if (!manual) {  
     if (!periodicity[0] && !periodicity[1] && !periodicity[2])
       error->all(FLERR,"Compute SAED must have at least one periodic boundary unless manual spacing specified");
+    if (triclinic == 1) 
+      error->all(FLERR,"Compute SAED does not work with triclinic structures"); 
 
     double *prd;
     double ave_inv = 0.0; 

@@ -76,8 +76,6 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
      error->all(FLERR,"Compute XRD does not work with 2d structures");
   if (narg < 4+ntypes) 
      error->all(FLERR,"Illegal Compute XRD Command");
-  if (triclinic == 1) 
-     error->all(FLERR,"Compute XRD does not work with triclinic structures");
 
   array_flag = 1;
   extarray = 0;
@@ -169,35 +167,43 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
  
   Kmax = 2 * sin(Max2Theta) / lambda;
  
-  // Calculating spacing between reciprocal lattice points using the prd
-  double *prd;
-  double ave_inv = 0.0; 
-
-  prd = domain->prd;
+  // Calculating spacing between reciprocal lattice points 
+  // Using distance based on periodic repeating distance
+  if (!manual) {
   
-  if (periodicity[0]){
-  prd_inv[0] = 1 / prd[0]; 
-  ave_inv += prd_inv[0];
-  } 
-  if (periodicity[1]){
-  prd_inv[1] = 1 / prd[1];
-  ave_inv += prd_inv[1];
-  } 
-  if (periodicity[2]){
-  prd_inv[2] = 1 / prd[2];
-  ave_inv += prd_inv[2];
-  }
+    if (triclinic == 1) 
+     error->all(FLERR,"Compute XRD does not work with triclinic structures");  
+    if (!periodicity[0] && !periodicity[1] && !periodicity[2])
+      error->all(FLERR,"Compute SAED must have at least one periodic boundary unless manual spacing specified");
 
-  // Using the average inverse dimensions for non-periodic direction
-  ave_inv = ave_inv / (periodicity[0] + periodicity[1] + periodicity[2]);
-  if (!periodicity[0]){
-  prd_inv[0] = ave_inv; 
-  } 
-  if (!periodicity[1]){
-  prd_inv[1] = ave_inv;
-  } 
-  if (!periodicity[2]){
-  prd_inv[2] = ave_inv;
+    double *prd;
+    double ave_inv = 0.0; 
+    prd = domain->prd;
+
+    if (periodicity[0]){
+      prd_inv[0] = 1 / prd[0]; 
+      ave_inv += prd_inv[0];
+    } 
+    if (periodicity[1]){
+      prd_inv[1] = 1 / prd[1];
+      ave_inv += prd_inv[1];
+    } 
+    if (periodicity[2]){
+      prd_inv[2] = 1 / prd[2];
+      ave_inv += prd_inv[2];
+    }
+
+    // Using the average inverse dimensions for non-periodic direction
+    ave_inv = ave_inv / (periodicity[0] + periodicity[1] + periodicity[2]);
+    if (!periodicity[0]){
+      prd_inv[0] = ave_inv; 
+    } 
+    if (!periodicity[1]){
+      prd_inv[1] = ave_inv;
+    } 
+    if (!periodicity[2]){
+      prd_inv[2] = ave_inv;
+    }
   }
 
   // Use manual mapping of reciprocal lattice 

@@ -65,8 +65,6 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
     error->all(FLERR,"Compute SAED does not work with 2d structures");
   if (narg < 4+ntypes) 
     error->all(FLERR,"Illegal Compute SAED Command");
-  if (triclinic == 1) 
-    error->all(FLERR,"Compute SAED does not work with triclinic structures"); 
   
   vector_flag = 1;
   extvector = 0;
@@ -161,7 +159,10 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   // Procedure to determine how many rows are needed given the constraints on 2theta
   // Calculating spacing between reciprical lattice points 
   // Using distance based on periodic repeating distance
-  if (!manual) {  
+  if (!manual) {
+
+    if (triclinic == 1) 
+      error->all(FLERR,"Compute SAED does not work with triclinic structures");     
     if (!periodicity[0] && !periodicity[1] && !periodicity[2])
       error->all(FLERR,"Compute SAED must have at least one periodic boundary unless manual spacing specified");
 

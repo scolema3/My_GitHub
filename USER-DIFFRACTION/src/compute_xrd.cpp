@@ -66,8 +66,6 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
      error->all(FLERR,"Compute XRD does not work with 2d structures");
   if (narg < 4+ntypes) 
      error->all(FLERR,"Illegal Compute XRD Command");
-  if (triclinic == 1) 
-     error->all(FLERR,"Compute XRD does not work with triclinic structures");
 
   array_flag = 1;
   extarray = 0;
@@ -154,7 +152,10 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
  
   // Calculating spacing between reciprocal lattice points 
   // Using distance based on periodic repeating distance
-  if (!manual) {  
+  if (!manual) {
+  
+    if (triclinic == 1) 
+     error->all(FLERR,"Compute XRD does not work with triclinic structures");  
     if (!periodicity[0] && !periodicity[1] && !periodicity[2])
       error->all(FLERR,"Compute SAED must have at least one periodic boundary unless manual spacing specified");
 
