@@ -7,7 +7,8 @@
 middle=excalibur
 middle_dir=\\\${WORKDIR}/.DataTransferArea_TMP
 
-version=0.09
+version=0.13
+# There is a known problem with ssh/scp on excalbiur addressed in this version.
 
 help_ani()
 {
@@ -78,35 +79,39 @@ echo " "
 Timestamp=`date +%Y%m%d%H%M%S`
 Out=".tmp_transfer_$Timestamp"
 
-
 # Setup
+rm ~/.ssh/known_hosts # Address known ssh problem on excalibur
 T0="$(date +%s)" 
 echo "ssh ${middle} \"mkdir -p ${middle_dir}/${Timestamp}\""
-eval "ssh ${middle} \"mkdir -p ${middle_dir}/${Timestamp} ; echo ${middle_dir}/${Timestamp} \" >& $Out"
-eval ${size} >& ${Out}_filelist 
-middle_dir_remote=`tail -n 1 ${Out} | awk '{print $1;}'`
-file_size=`tail -n 1 ${Out}_filelist | awk '{print $1;}'`
+eval "ssh ${middle} \"mkdir -p ${middle_dir}/${Timestamp} ; echo ${middle_dir}/${Timestamp} \" >& ${Out}_1"
+eval ${size} >& ${Out}_2
+middle_dir_remote=`tail -n 1 ${Out}_1 | awk '{print $1;}'`
+file_size=`tail -n 1 ${Out}_2 | awk '{print $1;}'`
 Tsetup="$(($(date +%s)-T0))"
 middle_dir_remote=${middle_dir_remote%/*}
 
 # Transfer 1
+rm ~/.ssh/known_hosts # Address known ssh problem on excalibur
 T="$(date +%s)"
 echo "${transfer1} -r ${host1}${file1} ${middle}:${middle_dir_remote}/${Timestamp}/"
-${transfer1} -r ${host1}${file1} ${middle}:${middle_dir_remote}/${Timestamp}/ >& $Out
+${transfer1} -r ${host1}${file1} ${middle}:${middle_dir_remote}/${Timestamp}/ >& ${Out}_3
 T1="$(($(date +%s)-T))"
 
 # Transfer 2
+rm ~/.ssh/known_hosts # Address known ssh problem on excalibur
 T="$(date +%s)"
 echo "${transfer2} -r ${middle}:${middle_dir_remote}/${Timestamp}/${file1name} ${host2}${file2}"
-${transfer2} -r ${middle}:${middle_dir_remote}/${Timestamp}/${file1name} ${host2}${file2} >& $Out
+${transfer2} -r ${middle}:${middle_dir_remote}/${Timestamp}/${file1name} ${host2}${file2} >& ${Out}_4
 T2="$(($(date +%s)-T))"
 
 # Clean-up
+rm ~/.ssh/known_hosts # Address known ssh problem on excalibur
 T="$(date +%s)"
 echo "ssh ${middle} \"rm -rf ${middle_dir_remote}/${Timestamp};rmdir ${middle_dir_remote}\""
-ssh ${middle} "rm -rf ${middle_dir_remote}/${Timestamp};rmdir ${middle_dir_remote}" >& $Out
+ssh ${middle} "rm -rf ${middle_dir_remote}/${Timestamp};rmdir ${middle_dir_remote}" >& ${Out}_5
 Tclean="$(($(date +%s)-T))"
-rm ${Out} ${Out}_filelist 
+
+rm ${Out}_1 ${Out}_2 ${Out}_3 ${Out}_4 ${Out}_5
 
 Ttot="$(($(date +%s)-T0))"
 printf "               File Size: %s\n" ${file_size}
