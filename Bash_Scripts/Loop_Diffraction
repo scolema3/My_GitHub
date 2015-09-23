@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.40
+Version=0.41
 
 # help guide
 help_ani()
@@ -645,7 +645,7 @@ lattice         none 1.0
 SED_READ_STRUCT_SED
 SED_ASSIGN_MASS_SED
 
-replicate      ${repeat[0]} ${repeat[0]} ${repeat[0]}
+replicate      ${repeat[0]} ${repeat[1]} ${repeat[2]}
 atom_modify    sort 0 0.0
 comm_style     tiled
 balance        0.9 rcb  
