@@ -1,0 +1,29 @@
+#!/bin/sh 
+#
+# Automate backups on excalibur
+
+Version=0.04
+
+source_list=(/p/work1/scoleman/Projects        /p/work1/scoleman/Public        )
+target_list=(/archive/armyc/scoleman/Projects  /archive/armyc/scoleman/Public  )
+output_list=(~/.backup/projects_backup.txt     ~/.backup/public_backup.txt     )
+
+master_out=~/.backup/backup_history.txt
+
+N=`echo ${#source_list[@]}`
+N=$(( $N - 1 )) 
+
+for i in `seq 0 $N`; do 
+  n_rsync=`ps ux | grep "rsync -arv ${source_list[$i]}" | wc -l`
+  if [[ ${n_rsync} -eq 1 ]]; then
+    nohup rsync -arv ${source_list[$i]} ${target_list[$i]} >& ${output_list[$i]}  &
+  fi
+done
+
+for job in `pgrep rsync`;do
+  while [ -e /proc/$job ]; do sleep 0.1; done
+done
+
+for i in `seq 0 $N`; do 
+  cat ${output_list[$i]} >> ${master_out}
+done 
