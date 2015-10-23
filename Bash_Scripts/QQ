@@ -1,7 +1,7 @@
 #!/bin/sh 
 
 user1=scoleman
-user2=djf92
+user2=
 machine_list=("shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
 
 

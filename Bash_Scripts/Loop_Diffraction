@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.42
+Version=0.43
 
 # help guide
 help_ani()
@@ -25,9 +25,9 @@ help_ani()
   Optional arguments: (Note, manual spacing always turned on)
   
  -- Diffraction  
-    -XRD 1/0 switch to compute xrd
+    -xrd 1/0 switch to compute xrd
       default: %s
-    -SAED 1/0 switch to compute electron diffraction
+    -saed 1/0 switch to compute electron diffraction
        default: %s
     -D basename for diffraction calculation 
        default: %s
@@ -74,7 +74,7 @@ QUEUE="s"
 NODES=4
 Time_Debug="00:10"
 Time_Standard="10:00"
-ACCOUNT="ARLAP35513022"
+ACCOUNT="ARLAP38753387"
 EMAIL="scolema3@gmail.com"
 MAIL="y"
 
