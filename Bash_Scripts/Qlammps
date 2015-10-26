@@ -277,10 +277,10 @@ if [ $CLUSTER == "Shepard" ] || [ $CLUSTER == "Armstrong" ] ; then
    Time=${Time_Standard}
    Setup_Env="
 export OMP_NUM_THREADS=${nOMP}  
-export MIC_ENV_PREFIX=PHI
-export PHI_OMP_NUM_THREADS=${MIC}
-export PHI_KMP_AFFINITY=\"granularity=fine,compact\"
-export PHI_KMP_PLACE_THREADS=\"59c,4t\" "   
+export MIC_ENV_PREFIX=MIC
+export MIC_OMP_NUM_THREADS=${MIC}
+export MIC_KMP_AFFINITY=\"granularity=fine,compact\"
+export MIC_KMP_PLACE_THREADS=\"59c,4t\" "   
    if [ $NODES -gt 124 ]; then
     NODES=124
     echo "Exceded node max: -n set back to $NODES"
