@@ -259,6 +259,17 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   memory->create(store_tmp,3*size_array_rows,"xrd:store_tmp");
 }
 
+  // Create vector of variables to be passed to fix saed/vtk
+  xrd_var[0] = lambda;
+  xrd_var[1] = Max2Theta;
+  xrd_var[2] = Max2Theta;
+  xrd_var[3] = c[0];
+  xrd_var[4] = c[1];
+  xrd_var[5] = c[2];
+  xrd_var[6] = dR_Ewald;
+  xrd_var[7] = manual_double;
+  
+  
 /* ---------------------------------------------------------------------- */
 
 ComputeXRD::~ComputeXRD()

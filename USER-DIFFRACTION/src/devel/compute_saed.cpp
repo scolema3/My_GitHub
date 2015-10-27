@@ -283,7 +283,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   memory->create(vector,size_vector,"saed:vector");
   memory->create(store_tmp,3*size_vector,"saed:store_tmp");
 
-  // Create vector of variables to be passed to fix ave/time/saed
+  // Create vector of variables to be passed to fix saed/vtk
   saed_var[0] = lambda;
   saed_var[1] = Kmax;
   saed_var[2] = Zone[0];

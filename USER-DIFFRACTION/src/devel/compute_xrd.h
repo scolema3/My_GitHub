@@ -32,6 +32,7 @@ class ComputeXRD : public Compute {
   void init();
   void compute_array();
   double memory_usage();
+  double  xrd_var[8];
 
  private:
   int     me;
