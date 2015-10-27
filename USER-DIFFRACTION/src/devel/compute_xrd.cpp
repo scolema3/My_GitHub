@@ -22,6 +22,7 @@
 #include "compute_xrd.h"
 #include "compute_xrd_consts.h"
 #include "atom.h"
+#include "comm.h"
 #include "update.h"
 #include "domain.h"
 #include "group.h"
@@ -31,20 +32,14 @@
 #include "stdio.h"
 #include "string.h"
 
-#include <iostream>
-
-#ifdef _OPENMP
-#include "omp.h"
-#include "comm.h"
-#endif
-
-#ifdef ENABLE_MIC
+// Attempting compatibility with USER-INTEL
+#ifdef LMP_INTEL_OFFLOAD
+#define _LMP_INTEL_OFFLOAD
 #include "offload.h"
 #endif
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
-using namespace std;
 
 static const char cite_compute_xrd_c[] =
   "compute_xrd command:\n\n"
@@ -64,13 +59,13 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
 {
   if (lmp->citeme) lmp->citeme->add(cite_compute_xrd_c);
 
-  MPI_Comm_rank(world,&me);
   int ntypes = atom->ntypes;
   int natoms = group->count(igroup);
   int dimension = domain->dimension;
   int *periodicity = domain->periodicity;
   int triclinic = domain->triclinic;
-
+  me = comm->me;
+  
   // Checking errors specific to the compute
   if (dimension == 2) 
      error->all(FLERR,"Compute XRD does not work with 2d structures");
@@ -105,10 +100,11 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   // Set defaults for optional args
   Min2Theta = 1;
   Max2Theta = 179;  
-  radflag ==1;
+  radflag = 1;
   c[0] = 1; c[1] = 1; c[2] = 1;
   LP = 1;
   manual = false;
+  double manual_double = 0;   
   echo = false;
   ratio = 0.5;
 
@@ -160,6 +156,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
 
     } else if (strcmp(arg[iarg],"manual") == 0) {
       manual = true;
+      manual_double = 1;       
       iarg += 1;        
       
     } else error->all(FLERR,"Illegal Compute XRD Command");
@@ -222,7 +219,6 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
   // Finding the intersection of the reciprocal space and Ewald sphere
   int nRows = 0;
   double dinv2= 0.0;
-  double r = 0.0;
   double ang = 0.0;
   double K[3];
   
@@ -237,7 +233,7 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
         dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
         if  (4 >= dinv2 * lambda * lambda ) {
        	  ang = asin(lambda * sqrt(dinv2) / 2);
-          if (ang <= Max2Theta & ang >= Min2Theta) {
+          if ( (ang <= Max2Theta) & (ang >= Min2Theta) ) {
           nRows++;
 	        }
         }
@@ -257,18 +253,16 @@ ComputeXRD::ComputeXRD(LAMMPS *lmp, int narg, char **arg) :
    
   memory->create(array,size_array_rows,size_array_cols,"xrd:array");
   memory->create(store_tmp,3*size_array_rows,"xrd:store_tmp");
-}
 
-  // Create vector of variables to be passed to fix saed/vtk
+  // Create vector of variables to be passed to fix xrd/vtk
   xrd_var[0] = lambda;
   xrd_var[1] = Max2Theta;
-  xrd_var[2] = Max2Theta;
+  xrd_var[2] = Min2Theta;
   xrd_var[3] = c[0];
   xrd_var[4] = c[1];
   xrd_var[5] = c[2];
-  xrd_var[6] = dR_Ewald;
-  xrd_var[7] = manual_double;
-  
+  xrd_var[6] = manual_double;
+}  
   
 /* ---------------------------------------------------------------------- */
 
@@ -307,7 +301,7 @@ void ComputeXRD::init()
       dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
       if  (4 >= dinv2 * lambda * lambda ) {
          ang = asin(lambda * sqrt(dinv2) / 2);
-         if (ang <= Max2Theta & ang >= Min2Theta) {
+         if ( (ang <= Max2Theta) & (ang >= Min2Theta) ) {
             store_tmp[3*n] = k;
             store_tmp[3*n+1] = j;
             store_tmp[3*n+2] = i;
@@ -383,18 +377,16 @@ void ComputeXRD::compute_array()
   if (me == 0 && echo) {
       if (screen)
         fprintf(screen," - %d block sections on CPU (Block size = %d) \n", nblockCPU, wblockCPU);
-#ifdef ENABLE_MIC        
+#ifdef _LMP_INTEL_OFFLOAD
         fprintf(screen," - %d block sections on MIC (Block size = %d) \n", nblockMIC, wblockMIC);
 #endif        
   }
  
   // 3- Setup for using OpenMP  
-  int *store_omp = store_tmp;
   int *ztype_omp = ztype;
-  int nthreadCPU = 1; 
-
-#ifdef _OPENMP
-  nthreadCPU = comm->nthreads;
+  int *store_omp = store_tmp;  
+#if defined(_OPENMP)
+  int nthreadCPU = comm->nthreads;
   if (me == 0 && echo) {
     if (screen)
       fprintf(screen," - using %d OMP threads on CPU",nthreadCPU);
@@ -404,21 +396,19 @@ void ComputeXRD::compute_array()
   // 4- Setup for using MIC offloading  
   int size_array_rows_MIC = 0;
   int size_array_rows_CPU = size_array_rows;
-
+#ifdef _LMP_INTEL_OFFLOAD
   int nthreadMIC = 1;
   int nprocMIC = 0 ; 
+  char sig0=me;
+  float MIC2CPU_ratio = ratio;
+  size_array_rows_MIC = MIC2CPU_ratio*size_array_rows;
+  size_array_rows_CPU = size_array_rows-size_array_rows_MIC;
 
-#ifdef ENABLE_MIC
-   char sig0=me;
-   float MIC2CPU_ratio = ratio;
-   size_array_rows_MIC = MIC2CPU_ratio*size_array_rows;
-   size_array_rows_CPU = size_array_rows-size_array_rows_MIC;
-
-   if (getenv("MIC_OMP_NUM_THREADS") == NULL) {
-     nthreadMIC = 240;
-     if (me == 0)
-       error->warning(FLERR,"MIC_OMP_NUM_THREADS environment is not set.");
-   } else {
+  if (getenv("MIC_OMP_NUM_THREADS") == NULL) {
+    nthreadMIC = 240;
+    if (me == 0)
+      error->warning(FLERR,"MIC_OMP_NUM_THREADS environment is not set.");
+  } else {
 #pragma offload target(mic:0) \
    nocopy(ztype_omp : length(ntypes) alloc_if(1) free_if(0)) \
    nocopy(xlocal : length(3*nlocalgroup) alloc_if(1) free_if(0)) \
@@ -436,6 +426,7 @@ void ComputeXRD::compute_array()
     printf(" - size_array_rows_CPU = %d  (Ratio=%0.2f) \n",size_array_rows_CPU,1-ratio);
    }
 #endif
+
 // ==========================================================
 // End Setups
 // ==========================================================
@@ -445,7 +436,7 @@ void ComputeXRD::compute_array()
 // ==========================================================
 // Begin MIC Offload Region
 // ==========================================================
-#ifdef ENABLE_MIC
+#ifdef _LMP_INTEL_OFFLOAD
 #pragma offload_wait target(mic:0) wait(&sig0)
 char signal_var=me;
 #pragma offload target(mic:0) \
@@ -612,6 +603,7 @@ char signal_var=me;
   } // End of pragma omp parallel region 
 }  // End of MIC region
 #endif
+
 // ==========================================================
 // END MIC Offload Region
 // ==========================================================
@@ -624,13 +616,15 @@ char signal_var=me;
   double tCPU0 = MPI_Wtime();
   int m = 0;
   double frac = 0.1;
-#pragma omp parallel num_threads(nthreadCPU)
+  
+#if defined(_OPENMP)  
+#pragma omp parallel num_threads(nthreadCPU) shared(typelocal,xlocal,Fvec,m,frac,ASFXRD)
+#endif
   {
     double *f = new double[ntypes];    // atomic structure factor by type
     int typei = 0;
     double Fatom1 = 0.0;               // structure factor per atom
     double Fatom2 = 0.0;               // structure factor per atom (imaginary)
-    double S = 0.0;                    // sin(theta)/lambda
     double K[3];
     double dinv2 = 0.0;
     double dinv  = 0.0;
@@ -643,14 +637,16 @@ char signal_var=me;
     double sqrt_lp = 0.0;
     double *inners = new double[wblockCPU];
 
-#ifdef _OPENMP
+#if defined(_OPENMP)
     if (me == 0 && echo && omp_get_thread_num() == 0) {
        printf("Inside the CPU parallel region, there are %d openMP thread(s) available\n",omp_get_max_threads());
     }
 #endif    
     // Loop when Lorentz-Polarization factor is applied    
     if (LP == 1) {
+#if defined(_OPENMP)
 #pragma omp for
+#endif
       for (int n = size_array_rows_MIC; n < size_array_rows; n++) {
         int k = store_omp[3*n];
         int j = store_omp[3*n+1];
@@ -714,7 +710,9 @@ char signal_var=me;
 
         // reporting progress of calculation
         if ( echo ) {
+#if defined(_OPENMP)        
           #pragma omp critical
+#endif
           {
             if ( m == round(frac * size_array_rows_CPU) ) {
               if (me == 0 && screen) fprintf(screen," %0.0f%% -",frac*100);
@@ -727,7 +725,9 @@ char signal_var=me;
 
     // Loop when Lorentz-Polarization factor is NOT applied
     } else {
+#if defined(_OPENMP)    
 #pragma omp for
+#endif
       for (int n = size_array_rows_MIC; n < size_array_rows; n++) {
         int k = store_omp[3*n];
         int j = store_omp[3*n+1];
@@ -786,7 +786,9 @@ char signal_var=me;
 
         // reporting progress of calculation
         if ( echo ) {
+#if defined(_OPENMP)
           #pragma omp critical
+#endif          
           {
             if ( m == round(frac * size_array_rows_CPU) ) {
               if (me == 0 && screen) fprintf(screen," %0.0f%% -",frac*100 );
@@ -811,13 +813,14 @@ char signal_var=me;
 // ==========================================================
 // Gather computed data from all sources
 // ==========================================================
-#ifdef ENABLE_MIC
+#ifdef _LMP_INTEL_OFFLOAD
 #pragma offload_wait target(mic:0) wait(&signal_var)
 #endif
   double *scratch = new double[2*size_array_rows];
   MPI_Allreduce(Fvec,scratch,2*size_array_rows,MPI_DOUBLE,MPI_SUM,world);
-
+#if defined(_OPENMP)
 #pragma omp parallel for
+#endif
   for (int i = 0; i < size_array_rows; i++) {
     array[i][1] = (scratch[2*i] * scratch[2*i] + scratch[2*i+1] * scratch[2*i+1]) / natoms;
   }
@@ -840,7 +843,7 @@ char signal_var=me;
     if (screen)
       fprintf(screen," 100%%\nTime ellapsed during compute_xrd = %0.2f sec using %0.2f Mbytes/processor", t2-t0, bytes/1024.0/1024.0);
       fprintf(screen," \n -time ellapsed within CPU loop = %0.2f sec", tCPU1-tCPU0);
-#ifdef ENABLE_MIC      
+#ifdef _LMP_INTEL_OFFLOAD
       fprintf(screen," \n -time waiting for MIC to finish = %0.2f sec\n-----\n", (t2-t0)-(tCPU1-tCPU0));
 #endif
   }

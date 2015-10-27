@@ -22,6 +22,7 @@
 #include "compute_saed.h"
 #include "compute_saed_consts.h"
 #include "atom.h"
+#include "comm.h"
 #include "update.h"
 #include "domain.h"
 #include "group.h"
@@ -31,20 +32,14 @@
 #include "stdio.h"
 #include "string.h"
 
-#include <iostream>
-
-#ifdef _OPENMP
-#include "omp.h"
-#include "comm.h"
-#endif
-
-#ifdef ENABLE_MIC
+// Attempting compatibility with USER-INTEL
+#ifdef LMP_INTEL_OFFLOAD
+#define _LMP_INTEL_OFFLOAD
 #include "offload.h"
 #endif
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
-using namespace std;
 
 static const char cite_compute_saed_c[] =
   "compute_saed command:\n\n"
@@ -64,14 +59,13 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
 {
   if (lmp->citeme) lmp->citeme->add(cite_compute_saed_c);
 
-  MPI_Comm_rank(world,&me);
-
   int ntypes = atom->ntypes;
   int natoms = group->count(igroup);
   int dimension = domain->dimension;
   int *periodicity = domain->periodicity;
   int triclinic = domain->triclinic;
-
+  me = comm->me;
+  
   // Checking errors specific to the compute
   if (dimension == 2) 
     error->all(FLERR,"Compute SAED does not work with 2d structures");
@@ -87,7 +81,6 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
     error->all(FLERR,"Compute SAED: Wavelength must be greater than zero");
 
   // Define atom types for atomic scattering factor coefficients
-
   int iarg = 4;
   ztype = new int[ntypes];
   for (int i = 0; i < ntypes; i++){
@@ -110,7 +103,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   c[0] = 1; c[1] = 1; c[2] = 1;
   dR_Ewald = 0.01 / 2;
   manual = false;
-  double manual_double=0; 
+  double manual_double = 0; 
   echo = false;
   ratio = 0.5;
 
@@ -411,7 +404,7 @@ void ComputeSAED::compute_vector()
   int nblockCPU = floor(nlocalgroup/wblockCPU);
   if ( nblockCPU == 0 ) wblockCPU=nlocalgroup;
 
-#ifdef ENABLE_MIC   
+#ifdef _LMP_INTEL_OFFLOAD   
   int wblockMIC = 4096;
   int nblockMIC = floor(nlocalgroup/wblockMIC);
   if ( nblockMIC == 0 ) wblockMIC=nlocalgroup;
@@ -422,18 +415,16 @@ void ComputeSAED::compute_vector()
   if (me == 0 && echo) {
       if (screen)
         fprintf(screen," - %d block sections on CPU (Block size = %d) \n", nblockCPU, wblockCPU);
-#ifdef ENABLE_MIC           
+#ifdef _LMP_INTEL_OFFLOAD           
         fprintf(screen," - %d block sections on MIC (Block size = %d) \n", nblockMIC, wblockMIC);
 #endif
   }  
   
   // 3- Setup for using OpenMP   
-  int *store_omp = store_tmp;
   int *ztype_omp = ztype;
-  int nthreadCPU = 1; 
-
-#ifdef _OPENMP
-  nthreadCPU = comm->nthreads;
+#if defined(_OPENMP)
+  int *store_omp = store_tmp;
+  int nthreadCPU = comm->nthreads;
   if (me == 0 && echo) {
     if (screen)
       fprintf(screen," - each MPI is using %d OMP threads on CPU",nthreadCPU);
@@ -443,11 +434,10 @@ void ComputeSAED::compute_vector()
   // 4- Setup for using MIC offloading    
   int nRowsMIC = 0;
   int nRowsCPU = nRows;
-    
+
+#ifdef _LMP_INTEL_OFFLOAD
   int nthreadMIC = 1;
   int nprocMIC = 0 ;   
-
-#ifdef ENABLE_MIC
   char sig0;
   float MIC2CPU_ratio = ratio;
   nRowsMIC = MIC2CPU_ratio*nRows;
@@ -488,7 +478,7 @@ void ComputeSAED::compute_vector()
 // ==========================================================
 // Begin MIC Offload Region
 // ==========================================================
-#ifdef ENABLE_MIC
+#ifdef _LMP_INTEL_OFFLOAD
 #pragma offload_wait target(mic:0) wait(&sig0)
 char signal_var;
 #pragma offload target(mic:0) \
@@ -593,13 +583,14 @@ char signal_var;
   int m = 0;
   double frac = 0.1;
   double tCPU0 = MPI_Wtime();
-#pragma omp parallel num_threads(nthreadCPU)
+#if defined(_OPENMP)  
+#pragma omp parallel num_threads(nthreadCPU) default(none) shared(offset,ASFSAED,typelocal,xlocal,Fvec,m,frac)
+#endif
   {
     double *f = new double[ntypes];    // atomic structure factor by type
     int typei = 0;
     double Fatom1 = 0.0;               // structure factor per atom
     double Fatom2 = 0.0;               // structure factor per atom (imaginary)
-    double S = 0.0;                    // sin(theta)/lambda
     double K[3];
     double dinv2 = 0.0;
     double dinv  = 0.0;
@@ -607,13 +598,12 @@ char signal_var;
      
     double *inners = new double[nlocalgroup];
 
-#ifdef _OPENMP
+#if defined(_OPENMP)  
     if (me == 0 && echo && omp_get_thread_num() == 0) {
        printf("Inside the CPU parallel region, there are %d openMP thread(s) available\n",omp_get_max_threads());
     }
-#endif
-
 #pragma omp for
+#endif
     for (int n = nRowsMIC; n < nRows; n++) {
       int i = store_tmp[3*n];
       int j = store_tmp[3*n+1];
@@ -630,7 +620,7 @@ char signal_var;
       Fatom2 = 0.0;
 
       // Calculate the atomic structure factor by type
-      // determining parameter set to use based on S = sin(theta)/lambda <> 2
+      // determining parameter set to use based on sin(theta)/lambda <> 2
       for (int ii = 0; ii < ntypes; ii++){
         f[ii] = 0;
         for (int C = 0; C < 5; C++){
@@ -672,7 +662,9 @@ char signal_var;
 
       // reporting progress of calculation
       if ( echo ) {
+#if defined(_OPENMP)       
         #pragma omp critical
+#endif        
         {
           if ( m == round(frac * nRowsCPU) ) {
             if (me == 0 && screen) fprintf(screen," %0.0f%% -",frac*100);
@@ -696,13 +688,14 @@ char signal_var;
 // ==========================================================
 // Gather computed data from all sources
 // ==========================================================
-#ifdef ENABLE_MIC
+#ifdef _LMP_INTEL_OFFLOAD
 #pragma offload_wait target(mic:0) wait(&signal_var)
 #endif
   double *scratch = new double[2*nRows];
   MPI_Allreduce(Fvec,scratch,2*nRows,MPI_DOUBLE,MPI_SUM,world);
-
-// #pragma omp parallel for
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
   for (int i = 0; i < nRows; i++) {
     vector[i] = (scratch[2*i] * scratch[2*i] + scratch[2*i+1] * scratch[2*i+1]) / natoms;
   }
@@ -725,7 +718,7 @@ char signal_var;
     if (screen)
       fprintf(screen," 100%%\nTime ellapsed during compute_xrd = %0.2f sec using %0.2f Mbytes/processor", t2-t0, bytes/1024.0/1024.0);
       fprintf(screen," \n -time ellapsed within CPU loop = %0.2f sec", tCPU1-tCPU0);
-#ifdef ENABLE_MIC      
+#ifdef _LMP_INTEL_OFFLOAD      
       fprintf(screen," \n -time waiting for MIC to finish = %0.2f sec\n-----\n", (t2-t0)-(tCPU1-tCPU0));
 #endif      
   }

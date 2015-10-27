@@ -45,6 +45,7 @@ class FixXRDvtk : public Fix {
   char *ids;
   FILE *fp;
   int nrows;
+  int ncols;
 
   int ave,nwindow,nsum,startstep;
   int overwrite;
@@ -67,15 +68,17 @@ class FixXRDvtk : public Fix {
   double  R_Ewald;           // Radius of Ewald sphere (distance units)
   double  lambda;            // Radiation wavelength (distance units)
   double  dK[3];             // spacing of reciprocal points in each dimension
+  double  Kmax;              // Maximum reciprocal distance to explore    
   int     Knmax[3];          // maximum integer value for K points in each dimension
   int     Knmin[3];          // minimum integer value for K points in each dimension
 
-  int     KnSlice[6];        // min 0-2 max 2-5 hkl index using zone
-  double  Kmax;              // Maximum reciprocal distance to explore
+//int     KnSlice[6];        // min 0-2 max 2-5 hkl index using zone
+  double  Max2Theta;         
+  double  Min2Theta;
   double  c[3];              // Parameters controlling resolution of reciprocal space explored
-  double  dR_Ewald;          // Thickness of Ewald sphere slice
   double  prd_inv[3];        // Inverse spacing of unit cell
 
+  int     argindex; 
   char    *filename;         // user-specified file
   int     nOutput; 
   int     Dim[3];

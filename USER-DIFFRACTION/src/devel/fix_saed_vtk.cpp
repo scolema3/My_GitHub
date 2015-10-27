@@ -32,10 +32,6 @@
 #include "math.h"
 #include "domain.h"
 
-#include <stdio.h>
-#include <iostream>
-
-using namespace std;
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
@@ -71,13 +67,9 @@ FixSAEDvtk::FixSAEDvtk(LAMMPS *lmp, int narg, char **arg) :
   if (nvalues != 1) error->all(FLERR,"Illegal fix saed/vtk command");
 
   options(narg,arg);
-  
-  which = NULL;
+
   ids = NULL;
-  int maxvalues = nvalues;
-
   nvalues = 0;
-
   iarg = 6;
   while (iarg < narg) {
     if (strncmp(arg[iarg],"c_",2) == 0 ) {
@@ -125,9 +117,6 @@ FixSAEDvtk::FixSAEDvtk(LAMMPS *lmp, int narg, char **arg) :
         error->all(FLERR,"Fix saed/vtk compute does not calculate a vector");
       if (compute->extvector != 0) 
         error->all(FLERR,"Illegal fix saed/vtk command"); 
-        
-      int length = modify->compute[icompute]->size_vector;
- 
       nrows = compute->size_vector;
       nvalues++;
       iarg++;
@@ -455,67 +444,67 @@ void FixSAEDvtk::invoke_vector(bigint ntimestep)
  
     if (overwrite) fseek(fp,filepos,SEEK_SET);
 
-     // Finding the intersection of the reciprocal space and Ewald sphere
-      int NROW1 = 0;
-      int NROW2 = 0;
-      double dinv2 = 0.0;
-      double r = 0.0;
-      double K[3];
+   // Finding the intersection of the reciprocal space and Ewald sphere
+    int NROW1 = 0;
+    int NROW2 = 0;
+    double dinv2 = 0.0;
+    double r = 0.0;
+    double K[3];
 
-      // Zone flag to capture entire reciprocal space volume
-      if ( (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
-        for (int k = Knmin[2]; k <= Knmax[2]; k++) {
-          for (int j = Knmin[1]; j <= Knmax[1]; j++) {
-            for (int i = Knmin[0]; i <= Knmax[0]; i++) {
-              K[0] = i * dK[0];
-              K[1] = j * dK[1];
-              K[2] = k * dK[2];
-              dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-              if (dinv2 < Kmax * Kmax) {
-                 fprintf(fp,"%g\n",vector_total[NROW1]/norm);
-                 fflush(fp);
-                 NROW1++;
-                 NROW2++;
-              } else {
-              fprintf(fp,"%d\n",-1);
-              fflush(fp);
-              NROW2++;
-              }
-            }
-          }
-        }
-      } else {
-        for (int k = Knmin[2]; k <= Knmax[2]; k++) {
-          for (int j = Knmin[1]; j <= Knmax[1]; j++) {
-            for (int i = Knmin[0]; i <= Knmax[0]; i++) {
-              K[0] = i * dK[0];
-              K[1] = j * dK[1];
-              K[2] = k * dK[2];
-              dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
-              if (dinv2 < Kmax * Kmax) {
-                r=0.0;
-                for (int m=0; m<3; m++) r += pow(K[m] - Zone[m],2.0);
-                r = sqrt(r);
-                if  ( (r >  (R_Ewald - dR_Ewald) ) && (r < (R_Ewald + dR_Ewald) ) ){
-                 fprintf(fp,"%g\n",vector_total[NROW1]/norm);
-                 fflush(fp);
-                 NROW2++;
-                 NROW1++;
-                } else {
-                  fprintf(fp,"%d\n",-1);
-                  fflush(fp);
-                  NROW2++;
-                }
-              } else {
-              fprintf(fp,"%d\n",-1);
-              fflush(fp);
-              NROW2++;
-             }
+    // Zone flag to capture entire reciprocal space volume
+    if ( (Zone[0] == 0) && (Zone[1] == 0) && (Zone[2] == 0) ){
+      for (int k = Knmin[2]; k <= Knmax[2]; k++) {
+        for (int j = Knmin[1]; j <= Knmax[1]; j++) {
+          for (int i = Knmin[0]; i <= Knmax[0]; i++) {
+            K[0] = i * dK[0];
+            K[1] = j * dK[1];
+            K[2] = k * dK[2];
+            dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
+            if (dinv2 < Kmax * Kmax) {
+               fprintf(fp,"%g\n",vector_total[NROW1]/norm);
+               fflush(fp);
+               NROW1++;
+               NROW2++;
+            } else {
+            fprintf(fp,"%d\n",-1);
+            fflush(fp);
+            NROW2++;
             }
           }
         }
       }
+    } else {
+      for (int k = Knmin[2]; k <= Knmax[2]; k++) {
+        for (int j = Knmin[1]; j <= Knmax[1]; j++) {
+          for (int i = Knmin[0]; i <= Knmax[0]; i++) {
+            K[0] = i * dK[0];
+            K[1] = j * dK[1];
+            K[2] = k * dK[2];
+            dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
+            if (dinv2 < Kmax * Kmax) {
+              r=0.0;
+              for (int m=0; m<3; m++) r += pow(K[m] - Zone[m],2.0);
+              r = sqrt(r);
+              if  ( (r >  (R_Ewald - dR_Ewald) ) && (r < (R_Ewald + dR_Ewald) ) ){
+               fprintf(fp,"%g\n",vector_total[NROW1]/norm);
+               fflush(fp);
+               NROW2++;
+               NROW1++;
+              } else {
+                fprintf(fp,"%d\n",-1);
+                fflush(fp);
+                NROW2++;
+              }
+            } else {
+            fprintf(fp,"%d\n",-1);
+            fflush(fp);
+            NROW2++;
+           }
+          }
+        }
+      }
     }
+  }
   nOutput++;   
 }
 
