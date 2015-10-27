@@ -53,7 +53,7 @@ const char *SAEDtypeList[SAEDmaxType] = {
                "Cm",      "Bk",      "Cf",      "NULL"};
 
 // list of atomic scattering factor constants for electron diffraction
-#ifdef ENABLE_MIC
+#ifdef _LMP_INTEL_OFFLOAD 
 __declspec(target(mic)) const double ASFSAED[SAEDmaxType][20] = {
 #else
 const double ASFSAED[SAEDmaxType][20] = {

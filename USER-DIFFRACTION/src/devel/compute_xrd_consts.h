@@ -76,7 +76,7 @@ const char *XRDtypeList[XRDmaxType] = {
                "NULL"};
 
 // a list of atomic scattering factor constants for x-ray diffraction
-#ifdef ENABLE_MIC
+#ifdef _LMP_INTEL_OFFLOAD  
 __declspec(target(mic)) const double ASFXRD[XRDmaxType][9] = {
 #else
 const double ASFXRD[XRDmaxType][9] = {
