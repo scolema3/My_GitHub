@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.12
+Version=0.13
 
 printf '\n  Running Version %s of %s\n' ${Version} $0
 
@@ -42,7 +42,7 @@ PWD=`pwd`
 
 # LAMMPS
 Application_Name=LAMMPS
-LAMMPS=\$HOME/bin/lmp_diff
+LAMMPS=~/../scoleman/Public/bin/lmp_diff   # mic versions included in phi queue options
 
 # Naming 
 Name="${@:${#@}}"    # use last input
@@ -53,11 +53,16 @@ InputSuffix=".in"
 # Job
 QUEUE="s"
 NODES=4
-Time_Debug="00:10"
-Time_Standard="10:00"
+Time_Debug="00:10"                 # 10 min
+Time_Standard="10:00"              # 10 hr
 ACCOUNT="ARLAP38753387"
-EMAIL="scolema3@gmail.com"
-MAIL="y"
+EMAIL=""
+MAIL="n"
+
+if [ $USER == "scoleman" ]; then 
+  EMAIL="scolema3@gmail.com"
+  MAIL="y"
+fi
 
 # PPN_SET=OMP for using max OpenMP Threads
 # PPN_SET=MPI for using max MPI processes
@@ -255,6 +260,7 @@ elif [ $CLUSTER == "Shepard" ] || [ $CLUSTER == "Armstrong" ] ; then
     fi
   elif [ ${QUEUE:0:1} == "p" ]; then
     QUEUE="phi"
+    LAMMPS=~/../scoleman/Public/bin/lmp_diff_mic
     NCPUS=10
     MIC=236
     if [ ${PPN_SET:0:1} == "M" ]; then
@@ -320,6 +326,7 @@ elif [ $CLUSTER == "Haise"  ] || [ $CLUSTER == "Kilrain"  ]; then
     fi   
   elif [ ${QUEUE:0:1} == "p" ]; then
     QUEUE="phi"
+    LAMMPS=~/../scoleman/Public/bin/lmp_diff_mic
     Time=${Time_Standard}
     Setup_Env="
 export OMP_NUM_THREADS=${nOMP}  
