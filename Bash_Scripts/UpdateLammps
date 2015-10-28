@@ -1,8 +1,8 @@
 #!/bin/sh -x
 
 Clean=0;
-#machine_list=("shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
-machine_list=("shepard")
+machine_list=("shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
+
 
 while (($#)); do
     case "$1" in

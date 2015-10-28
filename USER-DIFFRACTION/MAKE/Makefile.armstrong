@@ -10,12 +10,12 @@ SHELL = /bin/sh
 CC =		CC
 CCFLAGS =	-O3 -g -xhost -openmp -fPIC
 
-SHFLAGS =       -fPIE
+SHFLAGS =   -fPIE
 DEPFLAGS =	-M
 
 LINK =		CC
 LINKFLAGS =	-O3 -g -dynamic
-LIB =           -L/usr/lib64 -lstdc++
+LIB =       -L/usr/lib64 -lstdc++
 SIZE =		size
 
 ARCHIVE =	ar
