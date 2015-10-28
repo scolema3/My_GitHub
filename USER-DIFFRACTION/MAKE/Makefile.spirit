@@ -1,27 +1,30 @@
-# xt5 = Cray XT5, Cray CC, native MPI, FFTW
+# mkl = Intel Cluster Tools, mpiicc, MKL MPI, MKL FFT
+
+# Intel recommends Intel Cluster Tools Compiler Edition
+# to build libfftw2xc_intel.a: 
+# > cd /opt/intel/mkl/10.0.011/interfaces/fftw2xc
+# > become root via su
+# > gmake libem64t
 
 SHELL = /bin/sh
-.SUFFIXES: .cpp .d
 
 # ---------------------------------------------------------------------
 # compiler/linker settings
 # specify flags and libraries needed for your compiler
 
-CC =		CC
-CCFLAGS =	-O3 -g -xhost -openmp -DLMP_INTEL_OFFLOAD -fPIC
-
-SHFLAGS =       -fPIE
+CC =		icpc
+CCFLAGS =	-O3 -fno-alias -ip -unroll0 -xhost
+SHFLAGS =	-fPIC
 DEPFLAGS =	-M
 
-LINK =		CC
-LINKFLAGS =	-O3 -g -dynamic
-LIB =           -L/usr/lib64 -lstdc++
+LINK =		icpc
+LINKFLAGS =     -O3 -L/apps/intel/mkl/lib/intel64/ -L/apps/intel/lib/intel64/
+LIB =           -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_lapack95_lp64 -lstdc++ -lpthread -lifcore -liomp5
 SIZE =		size
 
 ARCHIVE =	ar
 ARFLAGS =	-rc
-SHLIBFLAGS =    -shared	
-
+SHLIBFLAGS =	-shared
 
 # ---------------------------------------------------------------------
 # LAMMPS-specific settings
@@ -40,9 +43,9 @@ LMP_INC =	-DLAMMPS_GZIP
 # PATH = path for MPI library
 # LIB = name of MPI library
 
-MPI_INC =  -DMPICH_SKIP_MPICXX 
+MPI_INC =       -DMPICH_SKIP_MPICXX 
 MPI_PATH = 
-MPI_LIB =	
+MPI_LIB =	-lmpi -lmpi++
 
 # FFT library, OPTIONAL
 # see discussion in doc/Section_start.html#2_2 (step 6)
@@ -51,16 +54,17 @@ MPI_LIB =
 # PATH = path for FFT library
 # LIB = name of FFT library
 
-FFT_INC =       -DFFT_NONE
-FFT_PATH = 	
-FFT_LIB =	
+FFT_INC =       -DFFT_FFTW -I/apps/intel/mkl/include/fftw
+FFT_PATH =
+#FFT_LIB =       /apps/intel/mkl/interfaces/fftw2xc/libfftw2xc_intel.a
+FFT_LIB =       /apps/intel/mkl/interfaces/local/fftw2xc/libfftw2xc_intel.a 
 
-# JPEG and/or PNG library, OPTIONAL
+# JPEG library, OPTIONAL
 # see discussion in doc/Section_start.html#2_2 (step 7)
-# only needed if -DLAMMPS_JPEG or -DLAMMPS_PNG listed with LMP_INC
-# INC = path(s) for jpeglib.h and/or png.h
-# PATH = path(s) for JPEG library and/or PNG library
-# LIB = name(s) of JPEG library and/or PNG library
+# only needed if -DLAMMPS_JPEG listed with LMP_INC
+# INC = path for jpeglib.h
+# PATH = path for JPEG library
+# LIB = name of JPEG library
 
 JPG_INC =       
 JPG_PATH = 	
@@ -78,7 +82,7 @@ EXTRA_PATH = $(PKG_PATH) $(MPI_PATH) $(FFT_PATH) $(JPG_PATH) $(PKG_SYSPATH)
 EXTRA_LIB = $(PKG_LIB) $(MPI_LIB) $(FFT_LIB) $(JPG_LIB) $(PKG_SYSLIB)
 
 # Path to src files
-
+ 
 vpath %.cpp ..
 vpath %.h ..
 

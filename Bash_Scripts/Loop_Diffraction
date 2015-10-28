@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.43
+Version=0.44
 
 # help guide
 help_ani()
@@ -128,68 +128,66 @@ repeat=(1 1 1)
 # Functions to read in input appropriately
 read_xray_args()
 {
-    unset xray
-    while (($#)) && [[ $1 != -* ]]; do  xray+=("$1"); shift; done
-    # Avoid assigning title to xray (last value)
-    if [ "$Title" == "${xray[${#xray[@]}-1]}" ]; then
-      unset xray[${#xray[@]}-1]
-    fi 
+  unset xray
+  while (($#)) && [[ $1 != -* ]]; do  xray+=("$1"); shift; done
+  # Avoid assigning title to xray (last value)
+  if [ "$Title" == "${xray[${#xray[@]}-1]}" ]; then
+    unset xray[${#xray[@]}-1]
+  fi 
 }
 
 read_electron_args()
 {
-    unset electron
-    while (($#)) && [[ $1 != -* ]]; do  electron+=("$1"); shift; done
-    # Avoid assigning title to species (last value)
-    if [ "$Title" == "${electron[${#electron[@]}-1]}" ]; then
-      unset electron[${#electron[@]}-1]
-    fi    
+  unset electron
+  while (($#)) && [[ $1 != -* ]]; do  electron+=("$1"); shift; done
+  # Avoid assigning title to species (last value)
+  if [ "$Title" == "${electron[${#electron[@]}-1]}" ]; then
+    unset electron[${#electron[@]}-1]
+  fi    
 }
 
 declare -a species=()
 read_species_args()
 {
-    while (($#)) && [[ $1 != -* ]]; do  species+=("$1"); shift; done
-    # Avoid assigning title to species (last value)
-    if [ "$Title" == "${species[${#species[@]}-1]}" ]; then
-      unset species[${#species[@]}-1]
-    fi
+  while (($#)) && [[ $1 != -* ]]; do  species+=("$1"); shift; done
+  # Avoid assigning title to species (last value)
+  if [ "$Title" == "${species[${#species[@]}-1]}" ]; then
+    unset species[${#species[@]}-1]
+  fi
 }
 
 read_repeat_args()
 {
-    unset repeat
-    while (($#)) && [[ $1 != -* ]]; do  repeat+=("$1"); shift; done
-    # Avoid assigning title to repeat (last value)
-    if [ "$Title" == "${repeat[${#repeat[@]}-1]}" ]; then
-      unset repeat[${#repeat[@]}-1]
-    fi 
+  unset repeat
+  while (($#)) && [[ $1 != -* ]]; do  repeat+=("$1"); shift; done
+  # Avoid assigning title to repeat (last value)
+  if [ "$Title" == "${repeat[${#repeat[@]}-1]}" ]; then
+    unset repeat[${#repeat[@]}-1]
+  fi 
 }
 
 # Optional input flags
 while (($#)); do
-    case "$1" in
-        -A) ACCOUNT="$2";;
-        -n) NODES="$2";;
-        -t) TIME="$2";;
-        -M) MAIL="$2";;
-        -q) QUEUE="$2";;
-        -P) PPN_SET="$2";;
-        -E) EMAIL="$2";;
-
-        -xrd)  XRD="$2";;
-        -saed) SAED="$2";;
-        -debug) DEBUG=1;;
-        -D) Diffraction_Base="$2";;
-        -S) read_species_args "${@:2}";;
-        -e) read_electron_args "${@:2}";;
-        -x) read_xray_args "${@:2}";;
-        -R) read_repeat_args "${@:2}";;        
-        -*)  echo "${@:1} is not a valid input"; exit 1;;
-        *)  ;;
-
-    esac
-    shift
+  case "$1" in
+    -A) ACCOUNT="$2";;
+    -n) NODES="$2";;
+    -t) TIME="$2";;
+    -M) MAIL="$2";;
+    -q) QUEUE="$2";;
+    -P) PPN_SET="$2";;
+    -E) EMAIL="$2";;
+    -xrd)  XRD="$2";;
+    -saed) SAED="$2";;
+    -debug) DEBUG=1;;
+    -D) Diffraction_Base="$2";;
+    -S) read_species_args "${@:2}";;
+    -e) read_electron_args "${@:2}";;
+    -x) read_xray_args "${@:2}";;
+    -R) read_repeat_args "${@:2}";;        
+    -*)  echo "${@:1} is not a valid input"; exit 1;;
+     *)  ;;
+  esac
+  shift
 done
 
 printf '\n  Running Version %s of %s on %s \n' ${Version} $0 ${CLUSTER}
@@ -207,258 +205,243 @@ if [ $CLUSTER == "Excalibur" ]; then
 
   ## Architecture and Environment
   NCPUS=32
-  
   if [ ${PPN_SET:0:1} == "M" ]; then
-   PPN=${NCPUS}
+    PPN=${NCPUS}
   elif [ ${PPN_SET:0:1} == "O" ]; then
-   PPN=2
+    PPN=2
   else
-   PPN=${PPN_SET}
+    PPN=${PPN_SET}
   fi
-  
   nOMP=$(( $NCPUS / $PPN ))
   nMPI=$(( $PPN * $NODES ))
-
   Setup_Env="export OMP_NUM_THREADS=${nOMP}"
 
   ## Specific Queue Options ##
   if [ ${QUEUE:0:1} == "d" ]; then
-   QUEUE="debug"
-   Time=${Time_Debug}
-   if [ $NODES -gt 16 ]; then
-    NODES=16
-    echo "Exceded node max: -n set back to $NODES"
-   fi
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 16 ]; then
+      NODES=16
+      echo "Exceded node max: -n set back to $NODES"
+    fi
   elif [ ${QUEUE:0:1} == "s" ]; then
-   QUEUE="standard"
-   Time=${Time_Standard}
+    QUEUE="standard"
+    Time=${Time_Standard}
   else
-   echo "Unknown queue requested for $CLUSTER"
-   exit 1   
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1   
   fi
   
   ## PBS and Submission ##
   PBS_extra="#PBS -l place=scatter:excl"
-
   MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP}"
   Submit_Command=qsub
-fi
 
 
 ############# Spirit Default Values #############
-if [ $CLUSTER == "Spirit" ]; then
+elif [ $CLUSTER == "Spirit" ]; then
   
   ## Architecture and Environment
   NCPUS=16
-  
   if [ ${PPN_SET:0:1} == "M" ]; then
-   PPN=${NCPUS}
+    PPN=${NCPUS}
   elif [ ${PPN_SET:0:1} == "O" ]; then
-   PPN=2
+    PPN=2
   else
-   PPN=${PPN_SET}
+    PPN=${PPN_SET}
   fi
-  
   nOMP=$(( $NCPUS / $PPN ))
   nMPI=$(( $PPN * $NODES ))
-
   Setup_Env="export OMP_NUM_THREADS=${nOMP}"
 
   ## Specific Queue Options ##    
   if [ ${QUEUE:0:1} == "d" ]; then
-   QUEUE="debug"
-   Time=${Time_Debug}
-   if [ $NODES -gt 46 ]; then
-    NODES=46
-   fi
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 46 ]; then
+      NODES=46
+    fi
   elif [ ${QUEUE:0:1} == "s" ]; then
-   QUEUE="standard"
-   Time=${Time_Standard}
-   if [ $NODES -gt 2295 ]; then
-    NODES=2295
-    echo "Exceded node max: -n set back to $NODES"
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 2295 ]; then
+      NODES=2295
+      echo "Exceded node max: -n set back to $NODES"
     fi
   else
-   echo "Unknown queue requested for $CLUSTER"
-   exit 1      
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1      
   fi
 
   ## PBS and Submission ##  
   PBS_extra=""  
-  
   MPI_launch="mpiexec_mpt -n ${nMPI} omplace"
   Submit_Command=qsub
-fi
 
 
 ############# Garnet Default Values #############
-if [ $CLUSTER == "Garnet" ]; then
+elif [ $CLUSTER == "Garnet" ]; then
   
   ## Architecture and Environment
   NCPUS=32
-  
   if [ ${PPN_SET:0:1} == "M" ]; then
-   PPN=${NCPUS}
+    PPN=${NCPUS}
   elif [ ${PPN_SET:0:1} == "O" ]; then
-   PPN=2
+    PPN=2
   else
-   PPN=${PPN_SET}
+    PPN=${PPN_SET}
   fi
-  
   nOMP=$(( $NCPUS / $PPN ))
   nMPI=$(( $PPN * $NODES ))
-
   Setup_Env="export OMP_NUM_THREADS=${nOMP}"
 
   ## Specific Queue Options ##    
   if [ ${QUEUE:0:1} == "d" ]; then
-   QUEUE="debug"
-   Time=${Time_Debug}
-   if [ $NODES -gt 256 ]; then
-    NODES=256
-   fi
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 256 ]; then
+      NODES=256
+    fi
   elif [ ${QUEUE:0:1} == "s" ]; then
-   QUEUE="standard_sm"
-   Time=${Time_Standard}
-   if [ $NODES -gt 160 ]; then
-    QUEUE="standard_lg"
-   elif [ $NODES -gt 3200 ]; then
-    NODES=3200
-    echo "Exceded node max: -n set back to $NODES"
+    QUEUE="standard_sm"
+    Time=${Time_Standard}
+    if [ $NODES -gt 160 ]; then
+      QUEUE="standard_lg"
+    elif [ $NODES -gt 3200 ]; then
+      NODES=3200
+      echo "Exceded node max: -n set back to $NODES"
     fi
   else
-   echo "Unknown queue requested for $CLUSTER"
-   exit 1      
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1      
   fi
 
   ## PBS and Submission ##  
   PBS_extra=""  
-  
   MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP}"
   Submit_Command=qsub
-fi
 
 
 ############# Shepard or Armstrong Default Values #############
-if [ $CLUSTER == "Shepard" ] || [ $CLUSTER == "Armstrong" ] ; then
+elif [ $CLUSTER == "Shepard" ] || [ $CLUSTER == "Armstrong" ] ; then
   
   ## Architecture and Environment
-  NCPUS=10
-  MIC=236
-
+  NCPUS=24
   if [ ${PPN_SET:0:1} == "M" ]; then
-   PPN=${NCPUS}
+    PPN=${NCPUS}
   elif [ ${PPN_SET:0:1} == "O" ]; then
-   PPN=1
+    PPN=1
   else
-   PPN=${PPN_SET}
+    PPN=${PPN_SET}
   fi
-  
   nOMP=$(( $NCPUS / $PPN ))
   nMPI=$(( $PPN * $NODES ))
-  
   Setup_Env="export OMP_NUM_THREADS=${nOMP}"
   
   ## Specific Queue Options ## 
   if [ ${QUEUE:0:1} == "d" ]; then
-   QUEUE="debug"
-   Time=${Time_Debug}
-   if [ $NODES -gt 150 ]; then
-    NODES=150
-    echo "Exceded node max: -n set back to $NODES"
-   fi
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 150 ]; then
+      NODES=150
+      echo "Exceded node max: -n set back to $NODES"
+    fi
   elif [ ${QUEUE:0:1} == "s" ]; then
-   QUEUE="standard"
-   Time=${Time_Standard}
-   if [ $NODES -gt 480 ]; then
-    NODES=480
-    echo "Exceded node max: -n set back to $NODES"
-   fi
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 480 ]; then
+      NODES=480
+      echo "Exceded node max: -n set back to $NODES"
+    fi
   elif [ ${QUEUE:0:1} == "p" ]; then
-   QUEUE="phi"
-   Time=${Time_Standard}
-   Setup_Env="
+    QUEUE="phi"
+    NCPUS=10
+    MIC=236
+    if [ ${PPN_SET:0:1} == "M" ]; then
+     PPN=${NCPUS}
+    elif [ ${PPN_SET:0:1} == "O" ]; then
+     PPN=1
+    else
+     PPN=${PPN_SET}
+    fi
+    nOMP=$(( $NCPUS / $PPN ))
+    nMPI=$(( $PPN * $NODES ))   
+    Time=${Time_Standard}
+    Setup_Env="
 export OMP_NUM_THREADS=${nOMP}  
 export MIC_ENV_PREFIX=MIC
 export MIC_OMP_NUM_THREADS=${MIC}
 export MIC_KMP_AFFINITY=\"granularity=fine,compact\"
 export MIC_KMP_PLACE_THREADS=\"59c,4t\" "   
-   if [ $NODES -gt 124 ]; then
-    NODES=124
-    echo "Exceded node max: -n set back to $NODES"
+    if [ $NODES -gt 124 ]; then
+      NODES=124
+      echo "Exceded node max: -n set back to $NODES"
     fi    
   fi
 
   ## PBS and Submission ##  
   PBS_extra=""  
-  
   MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP} -cc none"
   Submit_Command=qsub
-  
-fi
+
 
 
 ############# Haise or Kilrain Default Values #############
-if [ $CLUSTER == "Haise"  ] || [ $CLUSTER == "Kilrain"  ]; then
+elif [ $CLUSTER == "Haise"  ] || [ $CLUSTER == "Kilrain"  ]; then
 
   ## Architecture and Environment
   NCPUS=16
   MIC=236
-
   if [ ${PPN_SET:0:1} == "M" ]; then
-   PPN=${NCPUS}
+    PPN=${NCPUS}
   elif [ ${PPN_SET:0:1} == "O" ]; then
-   PPN=1
+    PPN=1
   else
-   PPN=${PPN_SET}
+    PPN=${PPN_SET}
   fi
-  
   nOMP=$(( $NCPUS / $PPN ))
   nMPI=$(( $PPN * $NODES ))
-
   Setup_Env="export OMP_NUM_THREADS=${nOMP}"
   
   ## Specific Queue Options ##     
   if [ ${QUEUE:0:1} == "d" ]; then
-   QUEUE="debug"
-   Time=${Time_Debug}
-   if [ $NODES -gt 64 ]; then
-    NODES=64
-    echo "Exceded node max: -n set back to $NODES"
-   fi
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 64 ]; then
+      NODES=64
+      echo "Exceded node max: -n set back to $NODES"
+    fi
   elif [ ${QUEUE:0:1} == "s" ]; then
-   QUEUE="standard"
-   Time=${Time_Standard}
-   if [ $NODES -gt 256 ]; then
-    NODES=256
-    echo "Exceded node max: -n set back to $NODES"
-   fi   
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 256 ]; then
+      NODES=256
+      echo "Exceded node max: -n set back to $NODES"
+    fi   
   elif [ ${QUEUE:0:1} == "p" ]; then
-   QUEUE="phi"
-   Time=${Time_Standard}
-   Setup_Env="
+    QUEUE="phi"
+    Time=${Time_Standard}
+    Setup_Env="
 export OMP_NUM_THREADS=${nOMP}  
 export MIC_ENV_PREFIX=MIC
 export MIC_OMP_NUM_THREADS=${MIC}
 export MIC_KMP_AFFINITY=\"granularity=fine,compact\"
 export MIC_KMP_PLACE_THREADS=\"59c,4t\" "        
-   if [ $NODES -gt 12 ]; then
-    NODES=12
-    echo "Exceded node max: -n set back to $NODES"
+    if [ $NODES -gt 12 ]; then
+      NODES=12
+      echo "Exceded node max: -n set back to $NODES"
    fi
   else
-   echo "Unknown queue requested for $CLUSTER"
-   exit 1   
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1   
   fi
 
   ## PBS and Submission ##   
   PBS_extra=""  
-  
   MPI_launch="mpirun -np ${nMPI} -ppn ${PPN}"
   Submit_Command=qsub
-  
-fi
 
+fi
 
 #################################################################
 #################################################################
@@ -471,19 +454,19 @@ if [ $MAIL == "y" ]; then
 PBS_mail="#PBS -m abe
 #PBS -M $EMAIL"
 else
-PBS_mail="#"
+  PBS_mail="#"
 fi
 
 ### Use TIME inputed on command line over default values
 if [ -n "$TIME" ]; then
- Time=$TIME
+  Time=$TIME
 fi
 
 
 ### Format time to be hh:mm:ss (at minimum)
 Ncolon=`echo "${Time}" | grep -o ":" | wc -l`
 if [ $Ncolon == 0 ]; then
- Time="00:$Time"
+  Time="00:$Time"
 fi
 PBS_time_suffix=":00"
 

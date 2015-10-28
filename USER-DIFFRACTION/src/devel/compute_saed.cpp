@@ -15,6 +15,12 @@
    Contributing authors: Shawn Coleman & Douglas Spearot (Arkansas)
 ------------------------------------------------------------------------- */
 
+// Attempting compatibility with USER-INTEL
+#ifdef LMP_INTEL_OFFLOAD
+#define _LMP_INTEL_OFFLOAD
+#include "offload.h"
+#endif
+
 #include "mpi.h"
 #include "math.h"
 #include "stdlib.h"
@@ -32,10 +38,8 @@
 #include "stdio.h"
 #include "string.h"
 
-// Attempting compatibility with USER-INTEL
-#ifdef LMP_INTEL_OFFLOAD
-#define _LMP_INTEL_OFFLOAD
-#include "offload.h"
+#if defined(_OPENMP)
+#include <omp.h>
 #endif
 
 using namespace LAMMPS_NS;
@@ -474,7 +478,6 @@ void ComputeSAED::compute_vector()
 // End Setups
 // ==========================================================
 
-
 // ==========================================================
 // Begin MIC Offload Region
 // ==========================================================
@@ -570,11 +573,11 @@ char signal_var;
     delete [] f;
   } // End of pragma omp parallel region 
 }  // End of MIC region
-#endif  
+#endif 
+
 // ==========================================================
 // END MIC Offload Region
 // ==========================================================
-
 
 
 // ==========================================================
@@ -584,7 +587,7 @@ char signal_var;
   double frac = 0.1;
   double tCPU0 = MPI_Wtime();
 #if defined(_OPENMP)  
-#pragma omp parallel num_threads(nthreadCPU) default(none) shared(offset,ASFSAED,typelocal,xlocal,Fvec,m,frac)
+#pragma omp parallel num_threads(nthreadCPU)
 #endif
   {
     double *f = new double[ntypes];    // atomic structure factor by type

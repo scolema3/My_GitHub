@@ -15,6 +15,13 @@
    Contributing authors: Shawn Coleman & Douglas Spearot (Arkansas)
 ------------------------------------------------------------------------- */
 
+// Attempting compatibility with USER-INTEL
+#ifdef LMP_INTEL_OFFLOAD
+#define _LMP_INTEL_OFFLOAD
+#include "offload.h"
+#endif
+
+
 #include "mpi.h"
 #include "math.h"
 #include "stdlib.h"
@@ -32,10 +39,8 @@
 #include "stdio.h"
 #include "string.h"
 
-// Attempting compatibility with USER-INTEL
-#ifdef LMP_INTEL_OFFLOAD
-#define _LMP_INTEL_OFFLOAD
-#include "offload.h"
+#if defined(_OPENMP)
+#include <omp.h>
 #endif
 
 using namespace LAMMPS_NS;

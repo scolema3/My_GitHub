@@ -30,7 +30,7 @@ Acta Crystallogr. A 45 78693
 
 #define XRDmaxType  211
 
-const char *XRDtypeList[XRDmaxType] = {
+static const char *XRDtypeList[XRDmaxType] = {
                   "H",    "He1-",      "He",      "Li",    "Li1+",    
                  "Be",    "Be2+",       "B",       "C",    "Cval",    
                   "N",       "O",     "O1-",       "F",     "F1-",    
@@ -76,10 +76,10 @@ const char *XRDtypeList[XRDmaxType] = {
                "NULL"};
 
 // a list of atomic scattering factor constants for x-ray diffraction
-#ifdef _LMP_INTEL_OFFLOAD  
-__declspec(target(mic)) const double ASFXRD[XRDmaxType][9] = {
+#ifdef _LMP_INTEL_OFFLOAD    
+__declspec( target(mic) ) const double ASFXRD[XRDmaxType][9] = {
 #else
-const double ASFXRD[XRDmaxType][9] = {
+static const double ASFXRD[XRDmaxType][9] = {
 #endif
   /*  Each set of two rows in this file contains the constants
       for 0 < sin(theta)/lambda < 2

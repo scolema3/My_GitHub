@@ -30,7 +30,7 @@ Acta Crystallogr.A 52 25776
 #define SAEDmaxType 99
 
 // list of element types associated with atomic scattering factor constants 
-const char *SAEDtypeList[SAEDmaxType] = {
+static const char *SAEDtypeList[SAEDmaxType] = {
                 "H",      "He",      "Li",      "Be",       "B",
                 "C",       "N",       "O",       "F",      "Ne",
                "Na",      "Mg",      "Al",      "Si",       "P",
@@ -54,7 +54,7 @@ const char *SAEDtypeList[SAEDmaxType] = {
 
 // list of atomic scattering factor constants for electron diffraction
 #ifdef _LMP_INTEL_OFFLOAD 
-__declspec(target(mic)) const double ASFSAED[SAEDmaxType][20] = {
+__declspec( target(mic) ) const double ASFSAED[SAEDmaxType][20] = {
 #else
 const double ASFSAED[SAEDmaxType][20] = {
 #endif
