@@ -17,9 +17,10 @@ done
 for machine in ${machine_list[*]}; do
 echo $machine
   if [ "$Clean" == "1" ]; then
-    ssh ${machine} "cd ~/Lammps/Diffraction/src;  git pull; make package-update; cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ ; Makefile=\`ls lmp_*\`; Makefile=\"\${Makefile#*lmp_}\"; Makefile=\`echo \$Makefile | sed -r \"s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g\"\`; make clean-all; eval \"make \${Makefile} -j12\" "
+    ssh ${machine} "cd ~/Lammps/Diffraction/src;  git pull; make package-update; cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ ; make clean-all; MakefileList=\`ls lmp_*\`; MakefileList=(\$MakefileList); for element in \${MakefileList[@]}; do    Makefile=\"\${element#*lmp_}\"; Makefile=\`echo \$Makefile | sed -r \"s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g\"\`; eval \"make \${Makefile} -j12\" ; done "
   else
-    ssh ${machine} "cd ~/Lammps/Diffraction/src;  git pull; make package-update; cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ ; Makefile=\`ls lmp_*\`; Makefile=\"\${Makefile#*lmp_}\"; Makefile=\`echo \$Makefile | sed -r \"s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g\"\`; eval \"make \${Makefile} -j12\" "
+    ssh ${machine} "cd ~/Lammps/Diffraction/src;  git pull; make package-update; cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ ; MakefileList=\`ls lmp_*\`; MakefileList=(\$MakefileList); for element in \${MakefileList[@]}; do    Makefile=\"\${element#*lmp_}\"; Makefile=\`echo \$Makefile | sed -r \"s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g\"\`; eval \"make \${Makefile} -j12\" ; done "
+
   fi
 done
 
