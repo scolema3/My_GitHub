@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.45
+Version=0.46
 
 # help guide
 help_ani()
@@ -70,10 +70,10 @@ Application_Name=LAMMPS
 LAMMPS=~/../scoleman/Public/bin/lmp_diff   # mic versions included in phi queue options
 
 # Job
-QUEUE="s"
-NODES=4
+QUEUE="p"
+NODES=12
 Time_Debug="00:10"
-Time_Standard="10:00"
+Time_Standard="24:00"
 ACCOUNT="ARLAP38753387"
 EMAIL=""
 MAIL="n"
@@ -121,11 +121,11 @@ SAED=1
 DEBUG=0
 
 # xlambda 2ThetaMin 2ThetaMax xRes0 xRes1 xRes2 LP nBins
-xray=(1.541838 30 110 0.0035 0.0035 0.0035 1 3000)
+xray=(1.541838 30 110 0.0025 0.0025 0.0025 1 8000)
 xray_debug=(1.541838 30 90 0.025 0.025 0.025 1 1000)
 
 # elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald
-electron=(0.0251 1.25 0 0 0 0.0075 0.0075 0.0075 0.0015)
+electron=(0.0251 1.25 0 0 0 0.0025 0.0025 0.0025 0.0015)
 electron_debug=(0.0251 0.85 0 0 0 0.025 0.025 0.025 0.0015)
 
 # replicate in the x y and z directions
