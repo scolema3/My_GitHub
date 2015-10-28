@@ -7,7 +7,7 @@ for machine in ${machine_list[*]}; do
  
   error1=`cat .tmp | grep "Could not resolve hostname" | wc -l`
    if [ $error1 != "0" ]; then 
-   ssh ${machine} "source ~/.bashrc;cd ~/My_GitHub/;git pull;rm ~/Public/bin/qlammps ~/Public/bin/loop_diffraction; ln ~/My_GitHub/Bash_Scripts/loop_diffraction ~/Public/bin/loop_diffraction ; ln ~/My_GitHub/Bash_Scripts/qlammps ~/Public/bin/qlammps" >& .tmp
+   ssh ${machine} "source ~/.bashrc ; cd ~/My_GitHub/ ; git pull ; rm ~/Public/bin/qlammps ; rm ~/Public/bin/loop_diffraction ; cp ~/My_GitHub/Bash_Scripts/loop_diffraction ~/Public/bin/loop_diffraction ; cp ~/My_GitHub/Bash_Scripts/qlammps ~/Public/bin/qlammps ; chmod 755 ~/Public/bin/* " >& .tmp
    error1=`cat .tmp | grep "Could not resolve hostname" | wc -l` 
    if [ $error1 != "0" ]; then  
     echo "Could not resolve hostname on ${machine}"
@@ -18,3 +18,5 @@ for machine in ${machine_list[*]}; do
   echo "${machine} status: `tail -n 1 .tmp`"
 done
 rm .tmp 
+
+
