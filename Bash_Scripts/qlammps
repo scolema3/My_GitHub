@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.13
+Version=0.15
 
 printf '\n  Running Version %s of %s\n' ${Version} $0
 
@@ -59,9 +59,13 @@ ACCOUNT="ARLAP38753387"
 EMAIL=""
 MAIL="n"
 
+# Defualt by user
 if [ $USER == "scoleman" ]; then 
   EMAIL="scolema3@gmail.com"
   MAIL="y"
+elif [ $USER == "ehernan"]; then 
+ EMAIL="efrain.hernandez18.ctr@mail.mil"
+ MAIL="y"
 fi
 
 # PPN_SET=OMP for using max OpenMP Threads
