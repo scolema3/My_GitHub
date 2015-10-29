@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.50
+Version=0.51
 
 # help guide
 help_ani()
@@ -129,7 +129,7 @@ xray=(1.541838 30 110 0.0035 0.0035 0.0035 1 8000)
 xray_debug=(1.541838 30 90 0.025 0.025 0.025 1 1000)
 
 # elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald
-electron=(0.0251 1.25 0 0 0 0.0035 0.0035 0.0035 0.0015)
+electron=(0.0251 1.25 0 0 0 0.005 0.005 0.005 0.0015)
 electron_debug=(0.0251 0.85 0 0 0 0.025 0.025 0.025 0.0015)
 
 # replicate in the x y and z directions

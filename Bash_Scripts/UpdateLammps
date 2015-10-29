@@ -3,7 +3,6 @@
 Clean=0;
 machine_list=("shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
 
-
 while (($#)); do
     case "$1" in
         -clean) Clean=1;;
@@ -23,6 +22,4 @@ echo $machine
 
   fi
 done
-
-
 
