@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.51
+Version=0.52
 
 # help guide
 help_ani()
@@ -103,7 +103,9 @@ case ${Host} in
   k*)         CLUSTER='Kilrain';;
   h*)         CLUSTER='Haise';;
   excalibur*) CLUSTER='Excalibur';;
-  spirit*)   CLUSTER='Spirit';;  
+  spirit*)   CLUSTER='Spirit';;
+  gordon*)    CLUSTER='Gordon';;
+  conrad*)    CLUSTER='Conrad';;    
   *)  "Host not recognized! "; exit 0 ;;
 esac
 
@@ -386,6 +388,71 @@ export MIC_KMP_AFFINITY=\"granularity=fine,compact\"
 export MIC_KMP_PLACE_THREADS=\"59c,4t\" "   
     if [ $NODES -gt 124 ]; then
       NODES=124
+      echo "Exceded node max: -n set back to $NODES"
+    fi    
+  fi
+
+  ## PBS and Submission ##  
+  PBS_extra=""  
+  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP} -cc none"
+  Submit_Command=qsub
+
+
+
+############# Conrad or Gordon Default Values #############
+elif [ $CLUSTER == "Conrad" ] || [ $CLUSTER == "Gordon" ] ; then
+  
+  ## Architecture and Environment
+  NCPUS=32
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=1
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+  
+  ## Specific Queue Options ## 
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 48 ]; then
+      NODES=48
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 70 ]; then
+      NODES=70
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  elif [ ${QUEUE:0:1} == "p" ]; then
+    QUEUE="phi"
+    LAMMPS=~/../scoleman/Public/bin/lmp_diff_mic
+    NCPUS=10
+    MIC=236
+    if [ ${PPN_SET:0:1} == "M" ]; then
+     PPN=${NCPUS}
+    elif [ ${PPN_SET:0:1} == "O" ]; then
+     PPN=1
+    else
+     PPN=${PPN_SET}
+    fi
+    nOMP=$(( $NCPUS / $PPN ))
+    nMPI=$(( $PPN * $NODES ))   
+    Time=${Time_Standard}
+    Setup_Env="
+export OMP_NUM_THREADS=${nOMP}  
+export MIC_ENV_PREFIX=MIC
+export MIC_OMP_NUM_THREADS=${MIC}
+export MIC_KMP_AFFINITY=\"granularity=fine,compact\"
+export MIC_KMP_PLACE_THREADS=\"59c,4t\" "   
+    if [ $NODES -gt 168 ]; then
+      NODES=168
       echo "Exceded node max: -n set back to $NODES"
     fi    
   fi

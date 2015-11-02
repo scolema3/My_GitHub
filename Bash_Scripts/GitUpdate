@@ -1,6 +1,6 @@
 #!/bin/sh 
 
-machine_list=("gordon" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
+machine_list=("gordon" "conrad" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
 
 for machine in ${machine_list[*]}; do
   ssh ${machine} "source ~/.bashrc;cd ~/My_GitHub/;git pull" >& .tmp
