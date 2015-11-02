@@ -1,7 +1,7 @@
-#!/bin/sh -x
+#!/bin/sh
 
 Clean=0;
-machine_list=("shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
+machine_list=("gordon" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
 
 while (($#)); do
     case "$1" in
@@ -16,9 +16,9 @@ done
 for machine in ${machine_list[*]}; do
 echo $machine
   if [ "$Clean" == "1" ]; then
-    ssh ${machine} "cd ~/Lammps/Diffraction/src;  git pull; make package-update; cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ ; make clean-all; MakefileList=\`ls lmp_*\`; MakefileList=(\$MakefileList); for element in \${MakefileList[@]}; do    Makefile=\"\${element#*lmp_}\"; Makefile=\`echo \$Makefile | sed -r \"s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g\"\`; eval \"make \${Makefile} -j12\" ; done "
+    ssh ${machine} "source ~/.bashrc; source ~/.profile ; cd ~/Lammps/Diffraction/src;  git pull; make package-update; cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ ; make clean-all; MakefileList=\`ls lmp_*\`; MakefileList=(\$MakefileList); for element in \${MakefileList[@]}; do    Makefile=\"\${element#*lmp_}\"; Makefile=\`echo \$Makefile | sed -r \"s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g\"\`; eval \"make \${Makefile} -j12\" ; if [[ \`echo \${Makefile} | grep -c mic\` -eq \"1\" ]] ; then rm ~/Public/bin/lmp_diff_mic; ln   lmp_\${Makefile} ~/Public/bin/lmp_diff_mic; else rm ~/Public/bin/lmp_diff; ln   lmp_\${Makefile} ~/Public/bin/lmp_diff;  fi;  done "
   else
-    ssh ${machine} "cd ~/Lammps/Diffraction/src;  git pull; make package-update; cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ ; MakefileList=\`ls lmp_*\`; MakefileList=(\$MakefileList); for element in \${MakefileList[@]}; do    Makefile=\"\${element#*lmp_}\"; Makefile=\`echo \$Makefile | sed -r \"s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g\"\`; eval \"make \${Makefile} -j12\" ; done "
+    ssh ${machine} "source ~/.bashrc; source ~/.profile ; cd ~/Lammps/Diffraction/src;  git pull; make package-update; cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ ; MakefileList=\`ls lmp_*\`; MakefileList=(\$MakefileList); for element in \${MakefileList[@]}; do    Makefile=\"\${element#*lmp_}\"; Makefile=\`echo \$Makefile | sed -r \"s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g\"\`; eval \"make \${Makefile} -j12\" ; if [[ \`echo \${Makefile} | grep -c mic\` -eq \"1\" ]] ; then rm ~/Public/bin/lmp_diff_mic; ln   lmp_\${Makefile} ~/Public/bin/lmp_diff_mic; else rm ~/Public/bin/lmp_diff; ln   lmp_\${Makefile} ~/Public/bin/lmp_diff;  fi;  done "
 
   fi
 done

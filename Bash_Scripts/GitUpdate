@@ -1,13 +1,13 @@
 #!/bin/sh 
 
-machine_list=("shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
+machine_list=("gordon" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
 
 for machine in ${machine_list[*]}; do
   ssh ${machine} "source ~/.bashrc;cd ~/My_GitHub/;git pull" >& .tmp
  
   error1=`cat .tmp | grep "Could not resolve hostname" | wc -l`
    if [ $error1 != "0" ]; then 
-   ssh ${machine} "source ~/.bashrc ; cd ~/My_GitHub/ ; git pull ; rm ~/Public/bin/qlammps ; rm ~/Public/bin/loop_diffraction ; cp ~/My_GitHub/Bash_Scripts/loop_diffraction ~/Public/bin/loop_diffraction ; cp ~/My_GitHub/Bash_Scripts/qlammps ~/Public/bin/qlammps ; chmod 755 ~/Public/bin/* " >& .tmp
+   ssh ${machine} "source ~/.bashrc; source ~/.profile ; cd ~/My_GitHub/ ; git pull ; rm ~/Public/bin/qlammps ; rm ~/Public/bin/loop_diffraction ; cp ~/My_GitHub/Bash_Scripts/loop_diffraction ~/Public/bin/loop_diffraction ; cp ~/My_GitHub/Bash_Scripts/qlammps ~/Public/bin/qlammps ; chmod 755 ~/Public/bin/* " >& .tmp
    error1=`cat .tmp | grep "Could not resolve hostname" | wc -l` 
    if [ $error1 != "0" ]; then  
     echo "Could not resolve hostname on ${machine}"
