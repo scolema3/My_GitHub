@@ -8,7 +8,7 @@ SHELL = /bin/sh
 # specify flags and libraries needed for your compiler
 
 CC =		CC
-CCFLAGS =	-O3 -g -openmp -xhost -fPIC
+CCFLAGS =	-O3 -g -openmp -DLMP_INTEL_OFFLOAD -xhost -fPIC
 SHFLAGS =	-fPIE
 DEPFLAGS =	-M
 
