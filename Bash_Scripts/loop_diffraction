@@ -194,7 +194,7 @@ while (($#)); do
     -xrd)  XRD="$2";;
     -saed) SAED="$2";;
     -debug) DEBUG=1;;
-    -triclnic) TRICLINIC=1;;    
+    -triclinic) TRICLINIC=1;;    
     -D) Diffraction_Base="$2";;
     -S) read_species_args "${@:2}";;
     -e) read_electron_args "${@:2}";;
@@ -669,11 +669,11 @@ fi
 if [[ $TRICLINIC -eq "1" ]]; then
   DumpRegion="prism 0 1 0 1 0 1 0 0 0 "
   ComStyle="brick"
-  Balance="0.9 rcb"
+  Balance="0.9 shift xyz 5 1.0 "
 else
   DumpRegion="block 0 1 0 1 0 1 "
   ComStyle="tiled"
-  Balance="0.9 shift xyz 5 1.0 "
+  Balance="0.9 rcb"
 fi
 
 #################################################################
