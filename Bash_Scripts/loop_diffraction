@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.52
+Version=0.53
 
 # help guide
 help_ani()
@@ -29,6 +29,7 @@ help_ani()
       default: %s
     -saed 1/0 switch to compute electron diffraction
        default: %s
+    -triclinic an optional flag to trigger triclinc data formating
     -D basename for diffraction calculation 
        default: %s
     -x xlambda 2ThetaMin 2ThetaMax xRes0 xRes1 xRes2 LP nBins
@@ -113,6 +114,8 @@ esac
 Find1=dump
 Find2=data
 
+TRICLINIC=0
+
 # Loop Input/Output Names
 Input=tmp_Input
 Output=tmp_Output
@@ -191,6 +194,7 @@ while (($#)); do
     -xrd)  XRD="$2";;
     -saed) SAED="$2";;
     -debug) DEBUG=1;;
+    -triclnic) TRICLINIC=1;;    
     -D) Diffraction_Base="$2";;
     -S) read_species_args "${@:2}";;
     -e) read_electron_args "${@:2}";;
@@ -660,6 +664,17 @@ SAED_LAMMPS="
 "
 fi
 
+# Special formating for triclinic systems
+
+if [[ $TRICLINIC -eq "1" ]]; then
+  DumpRegion="prism 0 1 0 1 0 1 0 0 0 "
+  ComStyle="brick"
+  Balance="0.9 rcb"
+else
+  DumpRegion="block 0 1 0 1 0 1 "
+  ComStyle="tiled"
+  Balance="0.9 shift xyz 5 1.0 "
+fi
 
 #################################################################
 #################################################################
@@ -709,8 +724,8 @@ SED_ASSIGN_MASS_SED
 
 replicate      ${repeat[0]} ${repeat[1]} ${repeat[2]}
 atom_modify    sort 0 0.0
-comm_style     tiled
-balance        0.9 rcb  
+comm_style     ${ComStyle}
+balance        ${Balance}
 
 pair_style     none
 
@@ -751,7 +766,7 @@ cd ${PWD}
 ${Setup_Env}
 
 
-READ_DUMP="region          chamber block 0 1 0 1 0 1 \\ncreate_box     ${NTypes} chamber \\nread_dump       \\\${File} XXXXX x y z box yes add yes"
+READ_DUMP="region          chamber ${DumpRegion} \\ncreate_box     ${NTypes} chamber \\nread_dump       \\\${File} XXXXX x y z box yes add yes"
 READ_DATA="read_data       \\\${File}"
 
 T0="\$(date +%s)"
