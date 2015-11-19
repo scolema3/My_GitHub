@@ -1,8 +1,8 @@
-#!/bin/sh 
+#!/bin/sh
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.53
+Version=0.54
 
 # help guide
 help_ani()
@@ -29,7 +29,6 @@ help_ani()
       default: %s
     -saed 1/0 switch to compute electron diffraction
        default: %s
-    -triclinic an optional flag to trigger triclinc data formating
     -D basename for diffraction calculation 
        default: %s
     -x xlambda 2ThetaMin 2ThetaMax xRes0 xRes1 xRes2 LP nBins
@@ -38,6 +37,9 @@ help_ani()
        default: %s %s %s %s %s %s %s %s %s
     -R replicate simulation by nx ny nz
        default: %s %s %s       
+    -atom_style (atomic or charge) 
+       default: %s
+    -triclinic an optional flag to trigger triclinc data formating
     -debug an optional flag for quick compute settings
 
  -- Job Submission       
@@ -55,7 +57,7 @@ help_ani()
        default: %s
     -E email address for to send correspondence
        default: %s
-  ' ${XRD} ${SAED} ${Diffraction_Base} "${xray[@]}" "${electron[@]}" "${repeat[@]}" ${ACCOUNT} ${QUEUE} ${NCPUS} ${NODES} ${PPN_SET} ${Time} ${MAIL} ${EMAIL}
+  ' ${XRD} ${SAED} ${Diffraction_Base} "${xray[@]}" "${electron[@]}" "${repeat[@]}" ${STYLE} ${ACCOUNT} ${QUEUE} ${NCPUS} ${NODES} ${PPN_SET} ${Time} ${MAIL} ${EMAIL}
   exit 1
 }
 
@@ -115,6 +117,7 @@ Find1=dump
 Find2=data
 
 TRICLINIC=0
+STYLE='atomic'
 
 # Loop Input/Output Names
 Input=tmp_Input
@@ -194,7 +197,8 @@ while (($#)); do
     -xrd)  XRD="$2";;
     -saed) SAED="$2";;
     -debug) DEBUG=1;;
-    -triclinic) TRICLINIC=1;;    
+    -triclinic) TRICLINIC=1;;
+    -atom_style) STYLE="$2";;    
     -D) Diffraction_Base="$2";;
     -S) read_species_args "${@:2}";;
     -e) read_electron_args "${@:2}";;
@@ -676,6 +680,20 @@ else
   Balance="0.9 rcb"
 fi
 
+# Specify formatting for different atom styles, which influences data structure
+
+if [[ "${STYLE}" == "atomic" ]]; then
+  AtomStyle="atom_style      atomic"
+elif [[ "${STYLE}" == "charge" ]]; then
+  AtomStyle="atom_style      charge"
+else
+printf '
+  Data_Style not recognized!
+  See guide:
+  '
+  help_ani
+fi
+
 #################################################################
 #################################################################
 ##                   Create Master Input file                  ##
@@ -718,6 +736,7 @@ variable        Nbins         equal ${xray[7]}
 
 #################################################################
 
+${AtomStyle}
 lattice         none 1.0
 SED_READ_STRUCT_SED
 SED_ASSIGN_MASS_SED
