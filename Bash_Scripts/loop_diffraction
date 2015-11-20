@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/bin/sh 
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.54
+Version=0.55
 
 # help guide
 help_ani()
@@ -31,10 +31,10 @@ help_ani()
        default: %s
     -D basename for diffraction calculation 
        default: %s
-    -x xlambda 2ThetaMin 2ThetaMax xRes0 xRes1 xRes2 LP nBins
-       default: %s %s %s %s %s %s %s %s
-    -e elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald
-       default: %s %s %s %s %s %s %s %s %s
+    -x xlambda 2ThetaMin 2ThetaMax xRes0 xRes1 xRes2 LP nBins xManual xPhi_Ratio
+       default: %s %s %s %s %s %s %s %s %s %s
+    -e elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald eManual ePhi_Ratio
+       default: %s %s %s %s %s %s %s %s %s %s %s
     -R replicate simulation by nx ny nz
        default: %s %s %s       
     -atom_style (atomic or charge) 
@@ -132,13 +132,13 @@ XRD=1
 SAED=1
 DEBUG=0
 
-# xlambda 2ThetaMin 2ThetaMax xRes0 xRes1 xRes2 LP nBins
-xray=(1.541838 30 110 0.0035 0.0035 0.0035 1 8000)
-xray_debug=(1.541838 30 90 0.025 0.025 0.025 1 1000)
+# xlambda 2ThetaMin 2ThetaMax xRes0 xRes1 xRes2 LP nBins xManual xPhi_Ratio
+xray=(1.541838 30 110 0.0035 0.0035 0.0035 1 8000 1 0.5)
+xray_debug=(1.541838 30 90 0.025 0.025 0.025 1 1000 1 0.5)
 
-# elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald
-electron=(0.0251 1.25 0 0 0 0.005 0.005 0.005 0.0015)
-electron_debug=(0.0251 0.85 0 0 0 0.025 0.025 0.025 0.0015)
+# elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald eManual ePhi_Ratio
+electron=(0.0251 1.25 0 0 0 0.005 0.005 0.005 0.0015 1 0.5)
+electron_debug=(0.0251 0.85 0 0 0 0.025 0.025 0.025 0.0015 1 0.5)
 
 # replicate in the x y and z directions
 repeat=(1 1 1)
@@ -574,18 +574,18 @@ if [ ${#species[@]} -lt "1" ]; then
 fi
 
 # If incorrect inputs--display help
-if [ ${#xray[@]} -ne "8" ]; then
+if [ ${#xray[@]} -ne "10" ]; then
   printf '
-  Must have 6 parameters after the -x switch!
+  Must have 10 parameters after the -x switch!
   See guide:
   '
   help_ani
 fi
 
 # If incorrect inputs--display help
-if [ ${#electron[@]} -ne "9" ]; then
+if [ ${#electron[@]} -ne "11" ]; then
   printf '
-  Must have 9 parameters after the -e switch!
+  Must have 11 parameters after the -e switch!
   See guide:
   '
   help_ani
@@ -614,7 +614,6 @@ fi
 
 
 ### Use debug default options 
-
 if [[ $DEBUG == "1" ]]; then 
   unset xray
   unset electron
@@ -623,7 +622,6 @@ if [[ $DEBUG == "1" ]]; then
 fi
 
 ### Process species for each type
-
 declare -a Species=()
 for i in `seq  0 $(( ${#species[@]} -1))`;  do
   if ! [[ ${species[$i]} =~ ^[0-9]+$ ]]; then
@@ -640,12 +638,63 @@ for i in `seq  0 $(( ${#species[@]} -1))`;  do
 done
 NTypes=${#Species[@]}
 
-### Process active diffraction computations
 
+### Process manual flag options
+if [[ ${xray[8]} -eq "1" ]]; then
+  Manual_x="manual"
+elif [[ ${xray[8]} -eq "0" ]]; then
+  Manual_x=""
+else 
+printf '
+  Manual flag must be 1/0 for xray!
+  See guide:
+  '
+  help_ani
+fi
+
+if [[ ${electron[9]} -eq "1" ]]; then
+  Manual_e="manual"
+elif [[ ${electron[9]} -eq "0" ]]; then
+  Manual_e=""
+else 
+printf '
+  Manual flag must be 1/0 for xray!
+  See guide:
+  '
+  help_ani
+fi
+
+### Process Phi_Ratio offload
+if (( $(echo ${xray[9]}'=='0 | bc -l) )); then
+  Ratio_x=""
+elif (( $(echo ${xray[9]}'>'0 | bc -l) && $(echo ${xray[9]}'<='1 | bc -l))); then
+  Ratio_x="ratio ${xray[9]}"
+else
+printf '
+  xPhi_Ratio must between 0-1!
+  See guide:
+  '
+  help_ani
+fi
+
+if (( $(echo ${electron[10]}'=='0 | bc -l) )); then
+  Ratio_e=""
+elif (( $(echo ${electron[10]}'>'0 | bc -l) && $(echo ${electron[10]}'<='1 | bc -l))); then
+  Ratio_e="ratio ${electron[10]}"
+else
+printf '
+  ePhi_Ratio must between 0-1!
+  See guide:
+  '
+  help_ani
+fi
+
+
+### Process active diffraction computations
 if  [[ $XRD -eq "1" ]]; then
 XRD_LAMMPS="
 compute         XRD all xrd \${xLambda} \${Species} 2Theta \${ThetaMin} &
-                \${ThetaMax} c \${xRes0} \${xRes1} \${xRes2} LP \${LP} echo manual
+                \${ThetaMax} c \${xRes0} \${xRes1} \${xRes2} LP \${LP} ${Manual_x} ${Ratio_x} echo
                 
 fix             2 all ave/histo/weight 1 1 1  \${ThetaMin} \${ThetaMax} &
                 \${Nbins} c_XRD[1] c_XRD[2] mode vector file \$A.xrd"
@@ -654,12 +703,11 @@ XRD_LAMMPS="
 "
 fi
 
-
 if  [[ $SAED -eq "1" ]]; then
 SAED_LAMMPS="
 compute         SAED all saed \${eLambda} \${Species} Kmax \${Kmax} &
                 Zone \${Zone0} \${Zone1} \${Zone2} c \${eRes0} \${eRes1} \${eRes2} &
-                dR_Ewald \${dR_Ewald} echo manual 
+                dR_Ewald \${dR_Ewald} ${Manual_e} ${Ratio_e} echo 
                 
 fix             1 all saed/vtk 1 1 1 c_SAED file \$A_saed
 "
@@ -668,8 +716,7 @@ SAED_LAMMPS="
 "
 fi
 
-# Special formating for triclinic systems
-
+### Special formating for triclinic systems
 if [[ $TRICLINIC -eq "1" ]]; then
   DumpRegion="prism 0 1 0 1 0 1 0 0 0 "
   ComStyle="brick"
@@ -680,8 +727,7 @@ else
   Balance="0.9 rcb"
 fi
 
-# Specify formatting for different atom styles, which influences data structure
-
+### Specify formatting for different atom styles, which influences data structure
 if [[ "${STYLE}" == "atomic" ]]; then
   AtomStyle="atom_style      atomic"
 elif [[ "${STYLE}" == "charge" ]]; then
