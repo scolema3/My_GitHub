@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.17
+Version=0.18
 
 printf '\n  Running Version %s of %s\n' ${Version} $0
 
@@ -280,6 +280,10 @@ elif [ $CLUSTER == "Shepard" ] || [ $CLUSTER == "Armstrong" ] ; then
     nMPI=$(( $PPN * $NODES ))   
     Time=${Time_Standard}
     Setup_Env="
+module swap PrgEnv-cray PrgEnv-intel 
+module unload libsci atp
+source /opt/intel/composer_xe_2013_sp1.2.144/bin/compilervars.sh intel64
+        
 export OMP_NUM_THREADS=${nOMP}  
 export MIC_ENV_PREFIX=MIC
 export MIC_OMP_NUM_THREADS=${MIC}
@@ -400,6 +404,8 @@ elif [ $CLUSTER == "Haise"  ] || [ $CLUSTER == "Kilrain"  ]; then
     LAMMPS=~/../scoleman/Public/bin/lmp_diff_mic
     Time=${Time_Standard}
     Setup_Env="
+module swap PrgEnv-cray PrgEnv-intel 
+    
 export OMP_NUM_THREADS=${nOMP}  
 export MIC_ENV_PREFIX=MIC
 export MIC_OMP_NUM_THREADS=${MIC}

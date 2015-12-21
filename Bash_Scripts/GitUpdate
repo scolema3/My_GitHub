@@ -3,7 +3,7 @@
 machine_list=("gordon" "conrad" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
 
 for machine in ${machine_list[*]}; do
-  ssh ${machine} "source ~/.bashrc;cd ~/My_GitHub/;git pull" >& .tmp
+  ssh ${machine} "source ~/.bashrc; source ~/.profile ; cd ~/My_GitHub/ ; git pull ; rm ~/Public/bin/qlammps ; rm ~/Public/bin/loop_diffraction ; cp ~/My_GitHub/Bash_Scripts/loop_diffraction ~/Public/bin/loop_diffraction ; cp ~/My_GitHub/Bash_Scripts/qlammps ~/Public/bin/qlammps ; chmod 755 ~/Public/bin/* " >& .tmp
  
   error1=`cat .tmp | grep "Could not resolve hostname" | wc -l`
    if [ $error1 != "0" ]; then 
