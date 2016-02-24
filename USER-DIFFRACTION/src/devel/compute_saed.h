@@ -42,7 +42,8 @@ class ComputeSAED : public Compute {
   double  prd_inv[3];        // Inverse spacing of unit cell
   bool    echo;              // echo compute_array progress
   float   ratio;             // Ratio of RELP offloaded to MIC
-  bool    manual;            // Turn on manual reciprocal map
+  bool    manual;            // Turn on/off manual reciprocal map
+  bool    complex;           // Report real & complex values of structure factor on/off
   double  *f;
   int     nRows;             // Number of RELP explored
 

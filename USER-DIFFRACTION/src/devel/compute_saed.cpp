@@ -108,6 +108,8 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
   dR_Ewald = 0.01 / 2;
   manual = false;
   double manual_double = 0; 
+  complex = false;
+  double complex_double = 0;
   echo = false;
   ratio = 0.5;
 
@@ -183,7 +185,7 @@ ComputeSAED::ComputeSAED(LAMMPS *lmp, int narg, char **arg) :
     if (!periodicity[0] && !periodicity[1] && !periodicity[2])
       error->all(FLERR,"Compute SAED must have at least one periodic boundary unless manual spacing specified");
     if (triclinic == 1) 
-      error->all(FLERR,"Compute SAED does not work with triclinic structures"); 
+      error->all(FLERR,"Compute SAED does not work with triclinic structures -- turn on manual spacing"); 
 
     double *prd;
     double ave_inv = 0.0; 
@@ -696,6 +698,7 @@ char signal_var;
 #endif
   double *scratch = new double[2*nRows];
   MPI_Allreduce(Fvec,scratch,2*nRows,MPI_DOUBLE,MPI_SUM,world);
+
 #if defined(_OPENMP)
 #pragma omp parallel for
 #endif
@@ -703,6 +706,30 @@ char signal_var;
     vector[i] = (scratch[2*i] * scratch[2*i] + scratch[2*i+1] * scratch[2*i+1]) / natoms;
   }
 
+/*  TESTING: this is where changes to add a "complex" flag will need to go
+
+!!! In ADDITION !!! nRows will need to be modified to account for the extra data being saved.
+
+  if (complex = 0) {
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+    for (int i = 0; i < nRows; i++) {
+      vector[i] = (scratch[2*i] * scratch[2*i] + scratch[2*i+1] * scratch[2*i+1]) / natoms;
+    }
+  }
+  if complex {
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+    for (int i = 0; i < nRows; i++) {
+      vector[2*i] = scratch[2*i];
+      vector[2*i+1] = scratch[2*i+1];
+    }
+  }  
+   
+    TESTING */
+    
   delete [] xlocal;
   delete [] typelocal;  
   delete [] scratch;
