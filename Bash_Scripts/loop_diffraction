@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.58
+Version=0.59
 
 # help guide
 help_ani()
@@ -39,6 +39,8 @@ help_ani()
        default: %s %s %s       
     -atom_style (atomic or charge) 
        default: %s
+    -b batch id allowing multiple loop_diffraction commands to be run simultaneously
+       defualt: (none)
     -triclinic an optional flag to trigger triclinc data formating
     -debug an optional flag for quick compute settings
 
@@ -120,6 +122,8 @@ Find2=data
 TRICLINIC=0
 STYLE='atomic'
 
+BATCH=''
+
 # Loop Input/Output Names
 Input=tmp_Input
 Output=tmp_Output
@@ -195,6 +199,7 @@ while (($#)); do
     -q) QUEUE="$2";;
     -P) PPN_SET="$2";;
     -E) EMAIL="$2";;
+    -b) BATCH="$2";;
     -xrd)  XRD="$2";;
     -saed) SAED="$2";;
     -debug) DEBUG=1;;
@@ -755,9 +760,9 @@ fi
 #################################################################
 #################################################################
 
-cat > $Diffraction_Base << _EOF_
+cat > ${Diffraction_Base}${BATCH} << _EOF_
 
-variable  A string "SED_PREFIX_SED"
+variable  A string "SED_PREFIX_SED${BATCH}"
 log		\$A.log
 
 processors * * *
@@ -821,7 +826,7 @@ _EOF_
 Submit_File="run.${Title}"
 
 ### Create a specific runscript for each input script
-cat > ${Submit_File} << _EOF_
+cat > ${Submit_File}${BATCH} << _EOF_
 #!/bin/bash
 #PBS -N ${Title}
 #PBS -l application=${Application_Name}
@@ -869,7 +874,7 @@ if [ \$Ndumps_suffix -gt "0" ]; then
     P=\`echo \${i%%.$Find1}\`
     N=\`sed '2q;d' \$D\`
     
-    cp $Diffraction_Base $Input.\$n
+    cp ${Diffraction_Base}${BATCH} $Input.\$n
 
     Masses_Assigned=\`grep -i Mass \${i} | wc -l\`
     if [ "\${Masses_Assigned}" -eq "0" ]; then
@@ -895,7 +900,7 @@ if [ \$Ndumps_prefix -gt "0" ]; then
     P=\`echo \${i##${Find1}.}\`
     N=\`sed '2q;d' \$D\`
     
-    cp $Diffraction_Base $Input.\$n
+    cp ${Diffraction_Base}${BATCH} $Input.\$n
 
     Masses_Assigned=\`grep -i Mass \${i} | wc -l\`
     if [ "\${Masses_Assigned}" -eq "0" ]; then
@@ -924,7 +929,7 @@ if [ \$Ndata_suffix -gt "0" ]; then
     P=\`echo \${i%%.$Find2}\`
     N=\`sed '2q;d' \$D\`
     
-    cp $Diffraction_Base $Input.\$n
+    cp ${Diffraction_Base}${BATCH} $Input.\$n
 
     Masses_Assigned=\`grep -i Mass \${i} | wc -l\`
     if [ "\${Masses_Assigned}" -eq "0" ]; then
@@ -950,7 +955,7 @@ if [ \$Ndata_prefix -gt "0" ]; then
     P=\`echo \${i##${Find2}.}\`
     N=\`sed '2q;d' \$D\`
     
-    cp $Diffraction_Base $Input.\$n
+    cp ${Diffraction_Base}${BATCH} $Input.\$n
 
     Masses_Assigned=\`grep -i Mass \${i} | wc -l\`
     if [ "\${Masses_Assigned}" -eq "0" ]; then
@@ -991,7 +996,7 @@ _EOF_
 
 echo "  Submitting $Title on $CLUSTER to $QUEUE queue"
 
-${Submit_Command} ${Submit_File}
+${Submit_Command} ${Submit_File}${BATCH} 
 
 echo " "
 
