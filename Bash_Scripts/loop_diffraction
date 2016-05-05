@@ -2,7 +2,7 @@
 
 # This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
 
-Version=0.56
+Version=0.58
 
 # help guide
 help_ani()
@@ -73,7 +73,7 @@ Application_Name=LAMMPS
 LAMMPS=~/../scoleman/Public/bin/lmp_diff   # mic versions included in phi queue options
 
 # Job
-QUEUE="p"
+QUEUE="s"
 NODES=12
 Time_Debug="00:10"
 Time_Standard="24:00"
@@ -99,7 +99,8 @@ PPN_SET=OMP
 # System
 Host=`hostname`
 case ${Host} in
-  ls*)        CLUSTER='Garnet';;    # workstaiton, debugging
+  ls*)        CLUSTER='Garnet';;    # workstaiton 1, debugging
+  veldact*)   CLUSTER='Garnet';;    # workstaiton 2, debugging
   shepard*)   CLUSTER='Shepard';;
   armstrong*) CLUSTER='Armstrong';;
   garnet*)    CLUSTER='Garnet';;
@@ -470,7 +471,9 @@ export MIC_KMP_PLACE_THREADS=\"59c,4t\" "
   fi
 
   ## PBS and Submission ##  
-  PBS_extra=""  
+  PBS_extra="module swap PrgEnv-cray PrgEnv-intel
+module unload libsci atp
+source /opt/intel/composer_xe_2013_sp1.2.144/bin/compilervars.sh intel64"  
   MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP} -cc none"
   Submit_Command=qsub
 
