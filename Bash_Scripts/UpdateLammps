@@ -31,7 +31,6 @@ machine_list=("conrad" "gordon" "shepard" "armstrong" "haise" "kilrain" "excalib
 Clean=0
 now=`date +"%Y_%m_%d"`
 
-
 while (($#)); do
     case "$1" in
         -clean) Clean=1;;
@@ -48,8 +47,42 @@ else
 fi
 
 
-cmdfile=tmp_file
+## Update Local Versions 
 
+echo "Working on local versions ..."
+
+cd /home/scoleman/Applications/LAMMPS/lammps_devel/src
+git pull  >& ~/.trash_update
+make package-update >& ~/.trash_update
+cp ~/Applications/My_GitHub/USER-DIFFRACTION/src/devel/* ./
+version=`awk -F\" '{print \$(NF-1)}' version.h  | sed -e 's/ /_/g'`
+make mpi -j12 >& ~/.trash_update
+
+rm ~/Applications/bin/lmp_devel
+rm ~/Applications/bin/lmp_diff 
+ln -s /home/scoleman/Applications/LAMMPS/lammps_devel/src/lmp_mpi ~/Applications/bin/lmp_diff 
+ln -s /home/scoleman/Applications/LAMMPS/lammps_devel/src/lmp_mpi ~/Applications/bin/lmp_devel
+cp lmp_mpi ~/Applications/bin/lmp_versions/lmp_diff_${now}_v${version}
+
+echo "   ... successfully completed devel branch"
+
+cd /home/scoleman/Applications/LAMMPS/lammps_devel/src
+git pull  >& ~/.trash_update
+make package-update >& ~/.trash_update
+cp ~/Applications/My_GitHub/USER-DIFFRACTION/src/devel/* ./
+version=`awk -F\" '{print \$(NF-1)}' version.h  | sed -e 's/ /_/g'`
+make mpi -j12 >& ~/.trash_update
+
+rm ~/Applications/bin/lmp_stable
+ln -s /home/scoleman/Applications/LAMMPS/lammps_devel/src/lmp_mpi ~/Applications/bin/lmp_stable
+cp /home/scoleman/Applications/LAMMPS/lammps_devel/src/lmp_mpi ~/Applications/bin/lmp_versions/lmp_stable_${now}_v${version}
+
+echo "   ... successfully completed stable branch"
+
+
+## Update Remote Versions
+
+cmdfile=tmp_file
 cat > ~/.${cmdfile} << _EOF_
 source ~/.bashrc; 
 source ~/.profile; 
@@ -85,7 +118,7 @@ for machine in ${machine_list[*]}; do
     scp ~/.${cmdfile} ${machine}:~/.${cmdfile} >& ~/.trash_file
     ssh ${machine} "~/.${cmdfile} ; rm ~/.${cmdfile}" >& ~/.trash_file_$machine
     nUpdate=`grep "size ../lmp_" ~/.trash_file_$machine  | wc -l`
-    echo "   ... succeffully updated $nUpdate LAMMPS executables"
+    echo "   ... successfully updated $nUpdate LAMMPS executables"
     rm ~/.trash_file_$machine
 
 done
