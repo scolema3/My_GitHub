@@ -425,6 +425,91 @@ export MIC_KMP_PLACE_THREADS=\"59c,4t\" "
   MPI_launch="mpirun -np ${nMPI} -ppn ${PPN}"
   Submit_Command=qsub
 
+
+
+############# Topaz Default Values #############
+elif [ $CLUSTER == "Topaz" ]; then
+  
+  ## Architecture and Environment
+  NCPUS=36
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=2
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+
+  ## Specific Queue Options ##    
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 180 ]; then
+      NODES=180
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 1728 ]; then
+      NODES=1728
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  else
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1      
+  fi
+
+  ## PBS and Submission ##  
+  PBS_extra=""  
+  MPI_launch="mpiexec_mpt -n ${nMPI} omplace"
+  Submit_Command=qsub
+
+
+
+############# Thunder Default Values #############
+elif [ $CLUSTER == "Thunder" ]; then
+  
+  ## Architecture and Environment
+  NCPUS=36
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=2
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+
+  ## Specific Queue Options ##    
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 65 ]; then
+      NODES=65
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 1608 ]; then
+      NODES=1608
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  else
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1      
+  fi
+
+  ## PBS and Submission ##  
+  PBS_extra=""  
+  MPI_launch="mpiexec_mpt -n ${nMPI} omplace"
+  Submit_Command=qsub
+
+
 fi
 
 

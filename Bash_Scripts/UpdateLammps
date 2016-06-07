@@ -27,7 +27,7 @@ exit 1
 
 #############  General Default Values ############# 
 
-machine_list=("conrad" "gordon" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet")
+machine_list=("conrad" "gordon" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet" "thunder" "topaz")
 Clean=0
 now=`date +"%Y_%m_%d"`
 
