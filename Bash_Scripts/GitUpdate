@@ -49,7 +49,7 @@ Message=$1
 cd ~/Applications/My_GitHub/
 git add *
 echo $Message
-git commit -m ${Message} >& ~/.tmp_git1
+git commit -m "${Message}" >& ~/.tmp_git1
 git push >& ~/.tmp_git2
 #rm ~/.tmp_git
 }
@@ -101,7 +101,7 @@ rm ~/.tmp_gitupdate_${machine}
 ############# Update Now ############# 
 
 T0="$(date +%s)"
-local_update ${gitMessage} &
+local_update "${gitMessage}" &
 wait
 
 
