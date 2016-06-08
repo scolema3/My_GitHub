@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh -x
 
 Version=0.01
 
@@ -6,7 +6,7 @@ Version=0.01
 help_ani()
 {
   printf '
-  GitUpdate (version: %s) 
+  GitUpdate (version: %s) "Message"
   Bash script that updates My_GitHub on the following machines:
   
   ' ${Version}
@@ -29,24 +29,29 @@ exit 1
 
 machine_list=("gordon" "conrad" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet" "topaz" "thunder")
 
+gitMessage="general updates"
 
 while (($#)); do
     case "$1" in
-        -clean) Clean=1;;
-        *)  help_ani ;;
+        *)  gitMessage=1;;
+        -h) help_ani ;;
     esac
     shift
 done
 
 
+
+
+
 local_update()
 {
-
+Message=$1
 cd ~/Applications/My_GitHub/
+git status >&  ~/.tmp_status
 git add *
-git commit -m "Updates" >& ~/.tmp_git
+git commit -m ${Message} >& ~/.tmp_git
 git push >& ~/.tmp_git
-rm ~/.tmp_git
+#rm ~/.tmp_git
 }
 
 ############# Remote Commands ############# 
@@ -96,6 +101,10 @@ rm ~/.tmp_gitupdate_${machine}
 ############# Update Now ############# 
 
 T0="$(date +%s)"
+local_update ${gitMessage} &
+wait
+
+
 for machine in ${machine_list[*]}; do
     remote_update $machine &
 done
