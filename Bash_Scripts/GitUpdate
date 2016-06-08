@@ -48,6 +48,7 @@ local_update()
 Message=$1
 cd ~/Applications/My_GitHub/
 git add *
+echo $Message
 git commit -m ${Message} >& ~/.tmp_git1
 git push >& ~/.tmp_git2
 #rm ~/.tmp_git
