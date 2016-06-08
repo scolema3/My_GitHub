@@ -1,6 +1,6 @@
 #!/bin/sh
 
-Version=0.01
+Version=0.04
 
 # help guide
 help_ani()
@@ -47,9 +47,10 @@ else
 fi
 
 
-## Update Local Versions 
+############# Local Versions #############  
 
-echo "Working on local versions ..."
+local_update()
+{
 
 cd /home/scoleman/Applications/LAMMPS/lammps_devel/src
 git pull  >& ~/.trash_update
@@ -64,7 +65,7 @@ ln -s /home/scoleman/Applications/LAMMPS/lammps_devel/src/lmp_mpi ~/Applications
 ln -s /home/scoleman/Applications/LAMMPS/lammps_devel/src/lmp_mpi ~/Applications/bin/lmp_devel
 cp lmp_mpi ~/Applications/bin/lmp_versions/lmp_diff_${now}_v${version}
 
-echo "   ... successfully completed devel branch"
+echo "Working on local, successfully completed devel branch" 
 
 cd /home/scoleman/Applications/LAMMPS/lammps_devel/src
 git pull  >& ~/.trash_update
@@ -77,16 +78,16 @@ rm ~/Applications/bin/lmp_stable
 ln -s /home/scoleman/Applications/LAMMPS/lammps_devel/src/lmp_mpi ~/Applications/bin/lmp_stable
 cp /home/scoleman/Applications/LAMMPS/lammps_devel/src/lmp_mpi ~/Applications/bin/lmp_versions/lmp_stable_${now}_v${version}
 
-echo "   ... successfully completed stable branch"
+echo "Working on local, successfully completed stable branch"
+}
 
-
-## Update Remote Versions
+############# Remote Versions #############  
 
 cmdfile=tmp_file
 cat > ~/.${cmdfile} << _EOF_
-source ~/.bashrc; 
-source ~/.profile; 
-cd ~/Lammps/Diffraction/src;  
+source ~/.bashrc 
+source ~/.profile
+cd ~/Lammps/Diffraction/src  
 git pull
 version=\`awk -F\" '{print \$(NF-1)}' version.h  | sed -e 's/ /_/g'\`
 make package-update
@@ -113,15 +114,31 @@ _EOF_
 
 chmod 777 ~/.${cmdfile}
 
+
+remote_update()
+{
+machine=$1
+scp ~/.${cmdfile} ${machine}:~/.${cmdfile} >& ~/.trash_file  
+ssh ${machine} "~/.${cmdfile} ; rm ~/.${cmdfile}" >& ~/.trash_file_$machine 
+nUpdate=`grep "size ../lmp_" ~/.trash_file_$machine  | wc -l` 
+echo "Working on $machine, successfully updated $nUpdate LAMMPS executables"
+rm ~/.trash_file_$machine
+}
+
+############# Update Now ############# 
+
+echo " "
+echo " Starting LAMMPS Update  "
+T0="$(date +%s)"
+local_update &
 for machine in ${machine_list[*]}; do
-    echo "Working on $machine ... "
-    scp ~/.${cmdfile} ${machine}:~/.${cmdfile} >& ~/.trash_file
-    ssh ${machine} "~/.${cmdfile} ; rm ~/.${cmdfile}" >& ~/.trash_file_$machine
-    nUpdate=`grep "size ../lmp_" ~/.trash_file_$machine  | wc -l`
-    echo "   ... successfully updated $nUpdate LAMMPS executables"
-    rm ~/.trash_file_$machine
-
+    remote_update $machine &
 done
+wait
+T1="$(($(date +%s)-T0))"
+printf "Update Time : %02d:%02d:%02d:%02d\n" "$(($T1/86400))" "$(($T1/3600%24))" "$(($T1/60%60))" "$(($T1%60))"""
 
+
+rm ~/.${cmdfile}
 rm ~/.trash_file
-
+rm ~/.trash_update
