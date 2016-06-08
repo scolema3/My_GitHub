@@ -6,7 +6,7 @@ Version=0.01
 help_ani()
 {
   printf '
-  GitUpdate (version: %s) "Message"
+  GitUpdate (version: %s) 
   Bash script that updates My_GitHub on the following machines:
   
   ' ${Version}
@@ -14,11 +14,11 @@ help_ani()
   printf '%s|' "${machine_list[@]}"; echo
 
   printf ' 
-  Usage:  GitUpdate 
+  Usage:  GitUpdate "Message"
 
   Optional arguments: 
-  
-  -h       : display help message
+  "Message" : git commit message for any new updates 
+  -h        : display help message
 
 ' 
 exit 1
@@ -39,19 +39,14 @@ while (($#)); do
     shift
 done
 
-
-
-
-
 local_update()
 {
 Message=$1
 cd ~/Applications/My_GitHub/
 git add *
-echo $Message
 git commit -m "${Message}" >& ~/.tmp_git
-git push >& ~/.tmp_git2
-#rm ~/.tmp_git
+git push >& ~/.tmp_git
+rm ~/.tmp_git
 }
 
 ############# Remote Commands ############# 
@@ -71,10 +66,6 @@ cp ~/My_GitHub/Bash_Scripts/qlammps ~/Public/bin/qlammps ; chmod 755 ~/Public/bi
 _EOF_
 
 chmod 777 ~/.${cmdfile}
-
-
-
-
 
 remote_update() 
 {
@@ -103,7 +94,6 @@ rm ~/.tmp_gitupdate_${machine}
 T0="$(date +%s)"
 local_update "${gitMessage}" &
 wait
-
 
 for machine in ${machine_list[*]}; do
     remote_update $machine &
