@@ -39,6 +39,15 @@ while (($#)); do
 done
 
 
+local_update()
+{
+
+cd ~/Applications/My_GitHub/
+git add *
+git commit -m "Updates" >& ~/.tmp_git
+git push >& ~/.tmp_git
+rm ~/.tmp_git
+}
 
 ############# Remote Commands ############# 
 
