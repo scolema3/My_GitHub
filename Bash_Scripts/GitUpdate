@@ -33,7 +33,7 @@ gitMessage="general updates"
 
 while (($#)); do
     case "$1" in
-        *)  gitMessage=1;;
+        *)  gitMessage=$1;;
         -h) help_ani ;;
     esac
     shift
