@@ -1,0 +1,60 @@
+# an example config file for use in testing GB_Builder_python
+# do not change without copying original
+
+# required variables
+
+lattice1 =
+4.05,0.,0.
+0.,4.05,0.
+0.,0.,4.05;
+lattice2 = ;
+basis =
+1,0.,0.,0.
+1,0.5,0.5,0.
+1,0.,0.5,0.5
+1,0.5,0.,0.5;
+species = Al;
+masses = 26.9815;
+axis = 0,0,1;
+direction = tilt;
+
+
+# option variables declared without added condition
+
+maxmiller = 5;
+sym_tol = .001;
+dis_tol = .001;
+deg_tol = .001;
+orientation =
+1,0,0
+0,1,0
+0,0,1;
+strain_tol = .001;
+maxarea = 62500;
+symmetry = True;
+verbose = True;
+gbsort = area;
+overlap_tol = 0;
+write_style = 1,2,3;
+normslabdim = 50,50;
+vacuum = 20;
+gbregion = 10;
+suffix = ;
+fully_periodic = False;
+pbc_overlap_tol = .5;
+stoich = True;
+forcestoich = False;
+translate = 0,0,0,0,0,0;
+summary = True;
+summary_name = files.info;
+angle_range = -1000,1000;
+archive = True;
+dir_base = .;
+atomstyle = atomic;
+typeoffset = 0;
+
+
+# optional variables declared with added condition
+
+ngbs = NULL;
+plane_shift = 0,0 or False;

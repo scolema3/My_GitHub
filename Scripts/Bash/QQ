@@ -1,0 +1,150 @@
+#!/bin/sh 
+
+
+Version=0.01
+
+
+user_list=("scoleman" "ehernan" "krl" "mtschopp" "djf92" "mcg84")
+queue_list=("debug" "standard" "frontier")
+machine_list=("gordon" "conrad" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet" "topaz" "thunder")
+
+
+
+############# Remote Commands ############# 
+
+cmdfile=tmp_file
+cat > ~/.${cmdfile} << _EOF_
+#!/bin/sh
+
+machine=\$1
+user_list=(${user_list[@]})
+queue_list=(${queue_list[@]})
+
+for user in \${user_list[*]}; do
+  qstat -u \${user} >& ~/.tmp_\${user}_qstat &
+done
+
+wait
+
+declare -i Qt Rt Ht Tt DQ DR SQ SR FQ FR
+Qt=Rt=Ht=Tt=DQ=DR=SQ=SR=FQ=FR=0
+Q=()
+R=()
+H=()
+T=()
+
+for user in \${user_list[*]}; do
+  sed -n '/Job ID/,\$p' ~/.tmp_\${user}_qstat > ~/.tmp_\${user}_qstat2
+  Qt+=\`grep -s " Q " ~/.tmp_\${user}_qstat2 | wc -l\`
+  Rt+=\`grep -s " R " ~/.tmp_\${user}_qstat2 | wc -l\`
+  Ht+=\`grep -s " H " ~/.tmp_\${user}_qstat2 | wc -l\`
+
+  Q+=(\`grep -s " Q " ~/.tmp_\${user}_qstat2 | wc -l\`)
+  R+=(\`grep -s " R " ~/.tmp_\${user}_qstat2 | wc -l\`)
+  H+=(\`grep -s " H " ~/.tmp_\${user}_qstat2 | wc -l\`)
+
+  rm ~/.tmp_\${user}_qstat ~/.tmp_\${user}_qstat2
+done
+
+Tt=\$((\$Qt + \$Rt + \$Ht))
+
+IFS=', ' read -r -a tmp <<< \`qstat -q debug | grep debug\` ; echo "\${tmp[5]} \${tmp[6]}"
+DQ=\${tmp[5]} 
+DR=\${tmp[6]}
+
+IFS=', ' read -r -a tmp <<< \`qstat -q standard | grep standard\` ; echo "\${tmp[5]} \${tmp[6]}"
+SQ=\${tmp[5]} 
+SR=\${tmp[6]}
+
+if [ \$(( \$SQ + \$SR)) -eq "0" ]; then
+echo "Checking other 'standard' " 
+IFS=', ' read -r -a tmp <<< \`qstat -q standard_sm | grep standard_sm\` ; echo "\${tmp[5]} \${tmp[6]}"
+SQ=\${tmp[5]} 
+SR=\${tmp[6]}
+
+fi
+
+IFS=', ' read -r -a tmp <<< \`qstat -q frontier | grep frontier\` ; echo "\${tmp[5]} \${tmp[6]}"
+FQ=\${tmp[5]} 
+FR=\${tmp[6]}
+
+
+echo \${Q[@]}
+echo \${R[@]}
+echo \${H[@]}
+printf "%15s %5i %6i %7i %5i %s %6i %7i %s %6i %7i %s %6i %7i %s" "\${machine} | " \$Tt \$Qt \$Rt \$Ht " |"  \$DQ \$DR " |"  \$SQ \$SR " |"  \$FQ \$FR " |"
+
+
+_EOF_
+
+chmod 777 ~/.${cmdfile}
+
+remote_qq() 
+{
+machine=$1
+scp ~/.${cmdfile} ${machine}:~/.${cmdfile} >& ~/.trash_file  
+ssh ${machine} "source ~/.bashrc ; ~/.${cmdfile} ${machine} " >& ~/.tmp_qq_${machine}
+
+# Sometimes machine isn't found -> Try again!
+error1=`cat ~/.tmp_qq_${machine} | grep "Could not resolve hostname" | wc -l`
+if [ $error1 != "0" ]; then 
+  scp ~/.${cmdfile} ${machine}:~/.${cmdfile} >& ~/.trash_file  
+  ssh ${machine} "source ~/.bashrc ; ~/.${cmdfile} ; rm ~/.${cmdfile}" >& ~/.tmp_qq_${machine}
+  error1=`cat ~/.tmp_qq_${machine} | grep "Could not resolve hostname" | wc -l` 
+  if [ $error1 != "0" ]; then  
+    echo "Could not resolve hostname on ${machine}"
+    exit 1
+  fi
+fi
+ 
+
+# Report information 
+echo "`tail -n 1 ~/.tmp_qq_${machine}`"
+#rm ~/.tmp_qq_${machine}
+
+}
+
+
+############# Update Now ############# 
+
+
+printf "%15s %-19s %13s %13s %13s\n" "CLUSTER | " "           LSBM             |"   "     DEBUG      |"  "    STANDARD    |"  "    FRONTIER    |"
+printf "%15s %5s %6s %7s %5s %s %6s %7s %s %6s %7s %s %6s %7s %s\n" "-------------| " "Total" "Queued" "Running" "Hold" " |" "Queued" "Running" " |" "Queued" "Running" " |" "Queued" "Running" " |"
+
+for i in `seq  0 $(( ${#user_list[@]} -1))`;  do
+  UserT[$i]=0
+  UserQ[$i]=0
+  UserR[$i]=0
+  UserH[$i]=0
+done
+
+
+for machine in ${machine_list[*]}; do
+  remote_qq $machine &
+  IFS=', ' read -r -a tmp1 <<< `tail -n 4 ~/.tmp_qq_${machine}  | head -1`
+  IFS=', ' read -r -a tmp2 <<< `tail -n 3 ~/.tmp_qq_${machine}  | head -1`
+  IFS=', ' read -r -a tmp3 <<< `tail -n 2 ~/.tmp_qq_${machine}  | head -1`
+
+  for i in `seq  0 $(( ${#user_list[@]} -1))`;  do
+    UserT[$i]=$(( ${UserT[$i]} + ${tmp1[$i]} + ${tmp2[$i]} + ${tmp3[$i]} ))
+    UserQ[$i]=$(( ${UserQ[$i]} + ${tmp1[$i]} ))
+    UserR[$i]=$(( ${UserR[$i]} + ${tmp2[$i]} ))
+    UserH[$i]=$(( ${UserH[$i]} + ${tmp3[$i]} ))
+  done
+  rm ~/.tmp_qq_${machine}
+
+done
+
+wait
+
+printf "\n%15s %5s %6s %7s %5s %s\n" "USER | " "Total" "Queued" "Running" "Hold" " |"
+
+for i in `seq  0 $(( ${#user_list[@]} -1))`;  do
+
+printf "%15s %5d %6d %7d %5d %s\n" "${user_list[$i]} | " ${UserT[$i]} ${UserQ[$i]} ${UserR[$i]} ${UserH[$i]} " |"
+done
+
+rm ~/.trash_file
+rm ~/.${cmdfile}
+
+

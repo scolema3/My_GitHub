@@ -1,0 +1,30 @@
+
+## Data
+Data_Dir=$PWD0/Data
+Work_Dir=$PWD
+Bulk_Data=Bulk.Data
+
+# LAMMPS Style
+Units=real
+AtomStyle=charge
+
+## Potential
+
+# KIM
+#Potential="
+#pair_style      kim KIMvirial EAM_Dynamo_Mishin_Farkas_Al__MO_651801486679_001
+#pair_coeff      * * \${Species}
+#neighbor        5.0 bin
+#neigh_modify    delay 0 every 1 check yes"
+
+# ReaxFF/c Example
+Potential="
+pair_style reax/c NULL
+pair_coeff * * ffield.reax \${Species}
+fix        0 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c"
+
+# Optimization
+Nx=1
+Nz=1
+Noverlap=1
+DeleteRegion=1

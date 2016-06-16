@@ -1,0 +1,1093 @@
+#!/bin/sh 
+
+# This script works with a LAMMPS_Base to compute diffraction patterns for all files within the current dir containing the same prefix OR suffix.  The script is designed to work with both LAMMPS dump and data files.
+
+Version=0.60
+
+# help guide
+help_ani()
+{
+  printf '
+  Usage: Loop_Diffraction -S Elements (-Optional arguments) Job_Title
+
+  The last argument is the file name for the LAMMPS input deck
+
+  Required arguments:
+  
+    -S list chemical species for each atom type
+     
+     If an integer N follows a species name, the following N types will 
+     be for that species that precedes the integer value.  
+     
+     For example, Al2O3 = Al Al O O O   |and|  B4C = B B B B C
+
+
+  Optional arguments: (Note, manual spacing always turned on)
+  
+ -- Diffraction  
+    -xrd 1/0 switch to compute xrd
+      default: %s
+    -saed 1/0 switch to compute electron diffraction
+       default: %s
+    -D basename for diffraction calculation 
+       default: %s
+    -x xlambda 2ThetaMin 2ThetaMax xRes0 xRes1 xRes2 LP nBins xManual xPhi_Ratio
+       default: %s %s %s %s %s %s %s %s %s %s
+    -e elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald eManual ePhi_Ratio
+       default: %s %s %s %s %s %s %s %s %s %s %s
+    -R replicate simulation by nx ny nz
+       default: %s %s %s       
+    -atom_style (atomic or charge) 
+       default: %s
+    -b batch id allowing multiple loop_diffraction commands to be run simultaneously
+       defualt: (none)
+    -triclinic an optional flag to trigger triclinc data formating
+    -debug an optional flag for quick compute settings
+
+ -- Job Submission       
+    -A account id for time charging
+       default: %s 
+    -q name of queue i.e. d=debug s=standard p=phi
+       default: %s
+    -n number of nodes requested (%s cores)
+       default: %s
+    -P control the number of processors (MPI, OpenMP, #)
+       default: %s       
+    -t wall-time for computation in dd:hh:mm
+       default: %s
+    -M email option y or n
+       default: %s
+    -E email address for to send correspondence
+       default: %s
+  ' ${XRD} ${SAED} ${Diffraction_Base} "${xray[@]}" "${electron[@]}" "${repeat[@]}" ${STYLE} ${ACCOUNT} ${QUEUE} ${NCPUS} ${NODES} ${PPN_SET} ${Time} ${MAIL} ${EMAIL}
+  exit 1
+}
+
+#############  General Default Values ############# 
+nInput=$# 
+isdef=0
+PWD=`pwd`
+
+Title="${@: -1}"
+
+# LAMMPS
+Application_Name=LAMMPS
+LAMMPS=~/../scoleman/Public/bin/lmp_diff   # mic versions included in phi queue options
+
+# Job
+QUEUE="s"
+NODES=12
+Time_Debug="00:10"
+Time_Standard="24:00"
+ACCOUNT="ARLAP38753387"
+EMAIL=""
+MAIL="n"
+
+# Defualt by user
+if [ $USER == "scoleman" ]; then 
+  EMAIL="scolema3@gmail.com"
+  MAIL="y"
+elif [ $USER == "ehernan"]; then 
+ EMAIL="efrain.hernandez18.ctr@mail.mil"
+ MAIL="y"
+fi
+
+
+# PPN_SET=OMP for using max OpenMP Threads
+# PPN_SET=MPI for using max MPI processes
+# PPN_SET=# for directly specifing # of processors per node
+PPN_SET=OMP
+
+# System
+Host=`hostname`
+case ${Host} in
+  ls*)        CLUSTER='Garnet';;    # workstaiton 1, debugging
+  veldact*)   CLUSTER='Garnet';;    # workstaiton 2, debugging
+  shepard*)   CLUSTER='Shepard';;
+  armstrong*) CLUSTER='Armstrong';;
+  garnet*)    CLUSTER='Garnet';;
+  k*)         CLUSTER='Kilrain';;
+  h*)         CLUSTER='Haise';;
+  excalibur*) CLUSTER='Excalibur';;
+  spirit*)   CLUSTER='Spirit';;
+  gordon*)    CLUSTER='Gordon';;
+  conrad*)    CLUSTER='Conrad';; 
+  thunder*)    CLUSTER='Thunder';;    
+  topaz*)    CLUSTER='Topaz';;    
+  *)  "Host not recognized! "; exit 0 ;;
+esac
+
+# Lammps Structure Files
+Find1=dump
+Find2=data
+
+TRICLINIC=0
+STYLE='atomic'
+
+BATCH=''
+
+# Loop Input/Output Names
+Input=tmp_Input
+Output=tmp_Output
+
+# Diffraction Options
+# Master Diffraction File
+Diffraction_Base=Master_Diffraction.in
+
+# 1/0 (on/off) for including each specific compute 
+XRD=1
+SAED=1
+DEBUG=0
+
+# xlambda 2ThetaMin 2ThetaMax xRes0 xRes1 xRes2 LP nBins xManual xPhi_Ratio
+xray=(1.541838 30 110 0.0035 0.0035 0.0035 1 8000 1 0.5)
+xray_debug=(1.541838 30 90 0.025 0.025 0.025 1 1000 1 0.5)
+
+# elambda Kmax Zone0 Zone1 Zone2 eRes0 eRes1 eRes2 dR_Ewald eManual ePhi_Ratio
+electron=(0.0251 1.25 0 0 0 0.005 0.005 0.005 0.0015 1 0.5)
+electron_debug=(0.0251 0.85 0 0 0 0.025 0.025 0.025 0.0015 1 0.5)
+
+# replicate in the x y and z directions
+repeat=(1 1 1)
+
+# Functions to read in input appropriately
+read_xray_args()
+{
+  unset xray
+  while (($#)) && [[ $1 != -* ]]; do  xray+=("$1"); shift; done
+  # Avoid assigning title to xray (last value)
+  if [ "$Title" == "${xray[${#xray[@]}-1]}" ]; then
+    unset xray[${#xray[@]}-1]
+  fi 
+}
+
+read_electron_args()
+{
+  unset electron
+  while (($#)) && [[ $1 != -* ]]; do  electron+=("$1"); shift; done
+  # Avoid assigning title to species (last value)
+  if [ "$Title" == "${electron[${#electron[@]}-1]}" ]; then
+    unset electron[${#electron[@]}-1]
+  fi    
+}
+
+declare -a species=()
+read_species_args()
+{
+  while (($#)) && [[ $1 != -* ]]; do  species+=("$1"); shift; done
+  # Avoid assigning title to species (last value)
+  if [ "$Title" == "${species[${#species[@]}-1]}" ]; then
+    unset species[${#species[@]}-1]
+  fi
+}
+
+read_repeat_args()
+{
+  unset repeat
+  while (($#)) && [[ $1 != -* ]]; do  repeat+=("$1"); shift; done
+  # Avoid assigning title to repeat (last value)
+  if [ "$Title" == "${repeat[${#repeat[@]}-1]}" ]; then
+    unset repeat[${#repeat[@]}-1]
+  fi 
+}
+
+# Optional input flags
+while (($#)); do
+  case "$1" in
+    -A) ACCOUNT="$2";;
+    -n) NODES="$2";;
+    -t) TIME="$2";;
+    -M) MAIL="$2";;
+    -q) QUEUE="$2";;
+    -P) PPN_SET="$2";;
+    -E) EMAIL="$2";;
+    -b) BATCH="$2";;
+    -xrd)  XRD="$2";;
+    -saed) SAED="$2";;
+    -debug) DEBUG=1;;
+    -triclinic) TRICLINIC=1;;
+    -atom_style) STYLE="$2";;    
+    -D) Diffraction_Base="$2";;
+    -S) read_species_args "${@:2}";;
+    -e) read_electron_args "${@:2}";;
+    -x) read_xray_args "${@:2}";;
+    -R) read_repeat_args "${@:2}";;        
+    -*)  echo "${@:1} is not a valid input"; exit 1;;
+     *)  ;;
+  esac
+  shift
+done
+
+printf '\n  Running Version %s of %s on %s \n' ${Version} $0 ${CLUSTER}
+
+
+#################################################################
+#################################################################
+##         Defaults for Specific DOD-HPCMP Machines            ##
+#################################################################
+#################################################################
+
+
+############# Excalibur Default Values #############
+if [ $CLUSTER == "Excalibur" ]; then
+
+  ## Architecture and Environment
+  NCPUS=32
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=2
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+
+  ## Specific Queue Options ##
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 16 ]; then
+      NODES=16
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard"
+    Time=${Time_Standard}
+  else
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1   
+  fi
+  
+  ## PBS and Submission ##
+  PBS_extra="#PBS -l place=scatter:excl"
+  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP}"
+  Submit_Command=qsub
+
+
+############# Spirit Default Values #############
+elif [ $CLUSTER == "Spirit" ]; then
+  
+  ## Architecture and Environment
+  NCPUS=16
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=2
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+
+  ## Specific Queue Options ##    
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 46 ]; then
+      NODES=46
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 2295 ]; then
+      NODES=2295
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  else
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1      
+  fi
+
+  ## PBS and Submission ##  
+  PBS_extra=""  
+  MPI_launch="mpiexec_mpt -n ${nMPI} omplace"
+  Submit_Command=qsub
+
+
+############# Garnet Default Values #############
+elif [ $CLUSTER == "Garnet" ]; then
+  
+  ## Architecture and Environment
+  NCPUS=32
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=2
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+
+  ## Specific Queue Options ##    
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 256 ]; then
+      NODES=256
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard_sm"
+    Time=${Time_Standard}
+    if [ $NODES -gt 160 ]; then
+      QUEUE="standard_lg"
+    elif [ $NODES -gt 3200 ]; then
+      NODES=3200
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  else
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1      
+  fi
+
+  ## PBS and Submission ##  
+  PBS_extra=""  
+  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP}"
+  Submit_Command=qsub
+
+
+############# Shepard or Armstrong Default Values #############
+elif [ $CLUSTER == "Shepard" ] || [ $CLUSTER == "Armstrong" ] ; then
+  
+  ## Architecture and Environment
+  NCPUS=24
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=1
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+  
+  ## Specific Queue Options ## 
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 150 ]; then
+      NODES=150
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 480 ]; then
+      NODES=480
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  elif [ ${QUEUE:0:1} == "p" ]; then
+    QUEUE="phi"
+    LAMMPS=~/../scoleman/Public/bin/lmp_diff_mic    
+    NCPUS=10
+    MIC=236
+    if [ ${PPN_SET:0:1} == "M" ]; then
+     PPN=${NCPUS}
+    elif [ ${PPN_SET:0:1} == "O" ]; then
+     PPN=1
+    else
+     PPN=${PPN_SET}
+    fi
+    nOMP=$(( $NCPUS / $PPN ))
+    nMPI=$(( $PPN * $NODES ))   
+    Time=${Time_Standard}
+    Setup_Env="
+module swap PrgEnv-cray PrgEnv-intel 
+module unload libsci atp
+source /opt/intel/composer_xe_2013_sp1.2.144/bin/compilervars.sh intel64
+    
+export OMP_NUM_THREADS=${nOMP}  
+export MIC_ENV_PREFIX=MIC
+export MIC_OMP_NUM_THREADS=${MIC}
+export MIC_KMP_AFFINITY=\"granularity=fine,compact\"
+export MIC_KMP_PLACE_THREADS=\"59c,4t\" "   
+    if [ $NODES -gt 124 ]; then
+      NODES=124
+      echo "Exceded node max: -n set back to $NODES"
+    fi    
+  fi
+
+  ## PBS and Submission ##  
+  PBS_extra=""  
+  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP} -cc none"
+  Submit_Command=qsub
+
+
+
+############# Conrad or Gordon Default Values #############
+elif [ $CLUSTER == "Conrad" ] || [ $CLUSTER == "Gordon" ] ; then
+  
+  ## Architecture and Environment
+  NCPUS=32
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=1
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+  
+  ## Specific Queue Options ## 
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 48 ]; then
+      NODES=48
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 70 ]; then
+      NODES=70
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  elif [ ${QUEUE:0:1} == "p" ]; then
+    QUEUE="phi"
+    LAMMPS=~/../scoleman/Public/bin/lmp_diff_mic
+    NCPUS=10
+    MIC=236
+    if [ ${PPN_SET:0:1} == "M" ]; then
+     PPN=${NCPUS}
+    elif [ ${PPN_SET:0:1} == "O" ]; then
+     PPN=1
+    else
+     PPN=${PPN_SET}
+    fi
+    nOMP=$(( $NCPUS / $PPN ))
+    nMPI=$(( $PPN * $NODES ))   
+    Time=${Time_Standard}
+    Setup_Env="
+export OMP_NUM_THREADS=${nOMP}  
+export MIC_ENV_PREFIX=MIC
+export MIC_OMP_NUM_THREADS=${MIC}
+export MIC_KMP_AFFINITY=\"granularity=fine,compact\"
+export MIC_KMP_PLACE_THREADS=\"59c,4t\" "   
+    if [ $NODES -gt 168 ]; then
+      NODES=168
+      echo "Exceded node max: -n set back to $NODES"
+    fi    
+  fi
+
+  ## PBS and Submission ##  
+  PBS_extra="module swap PrgEnv-cray PrgEnv-intel
+module unload libsci atp
+source /opt/intel/composer_xe_2013_sp1.2.144/bin/compilervars.sh intel64"  
+  MPI_launch="aprun -n ${nMPI} -N ${PPN} -d ${nOMP} -cc none"
+  Submit_Command=qsub
+
+
+
+############# Haise or Kilrain Default Values #############
+elif [ $CLUSTER == "Haise"  ] || [ $CLUSTER == "Kilrain"  ]; then
+
+  ## Architecture and Environment
+  NCPUS=16
+  MIC=236
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=1
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+  
+  ## Specific Queue Options ##     
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 64 ]; then
+      NODES=64
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 256 ]; then
+      NODES=256
+      echo "Exceded node max: -n set back to $NODES"
+    fi   
+  elif [ ${QUEUE:0:1} == "p" ]; then
+    QUEUE="phi"
+    LAMMPS=~/../scoleman/Public/bin/lmp_diff_mic    
+    Time=${Time_Standard}
+    Setup_Env="
+module swap PrgEnv-cray PrgEnv-intel 
+
+export OMP_NUM_THREADS=${nOMP}  
+export MIC_ENV_PREFIX=MIC
+export MIC_OMP_NUM_THREADS=${MIC}
+export MIC_KMP_AFFINITY=\"granularity=fine,compact\"
+export MIC_KMP_PLACE_THREADS=\"59c,4t\" "        
+    if [ $NODES -gt 12 ]; then
+      NODES=12
+      echo "Exceded node max: -n set back to $NODES"
+   fi
+  else
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1   
+  fi
+
+  ## PBS and Submission ##   
+  PBS_extra=""  
+  MPI_launch="mpirun -np ${nMPI} -ppn ${PPN}"
+  Submit_Command=qsub
+
+
+
+############# Topaz Default Values #############
+elif [ $CLUSTER == "Topaz" ]; then
+  
+  ## Architecture and Environment
+  NCPUS=36
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=2
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+
+  ## Specific Queue Options ##    
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 180 ]; then
+      NODES=180
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 1728 ]; then
+      NODES=1728
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  else
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1      
+  fi
+
+  ## PBS and Submission ##  
+  PBS_extra=""  
+  MPI_launch="mpiexec_mpt -n ${nMPI} omplace"
+  Submit_Command=qsub
+
+
+
+############# Thunder Default Values #############
+elif [ $CLUSTER == "Thunder" ]; then
+  
+  ## Architecture and Environment
+  NCPUS=36
+  if [ ${PPN_SET:0:1} == "M" ]; then
+    PPN=${NCPUS}
+  elif [ ${PPN_SET:0:1} == "O" ]; then
+    PPN=2
+  else
+    PPN=${PPN_SET}
+  fi
+  nOMP=$(( $NCPUS / $PPN ))
+  nMPI=$(( $PPN * $NODES ))
+  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+
+  ## Specific Queue Options ##    
+  if [ ${QUEUE:0:1} == "d" ]; then
+    QUEUE="debug"
+    Time=${Time_Debug}
+    if [ $NODES -gt 65 ]; then
+      NODES=65
+    fi
+  elif [ ${QUEUE:0:1} == "s" ]; then
+    QUEUE="standard"
+    Time=${Time_Standard}
+    if [ $NODES -gt 1608 ]; then
+      NODES=1608
+      echo "Exceded node max: -n set back to $NODES"
+    fi
+  else
+    echo "Unknown queue requested for $CLUSTER"
+    exit 1      
+  fi
+
+  ## PBS and Submission ##  
+  PBS_extra=""  
+  MPI_launch="mpiexec_mpt -n ${nMPI} omplace"
+  Submit_Command=qsub
+
+
+fi
+
+#################################################################
+#################################################################
+##               Formatting PBS and Error Checks               ##
+#################################################################
+#################################################################
+
+### PBS mail commands
+if [ $MAIL == "y" ]; then
+PBS_mail="#PBS -m abe
+#PBS -M $EMAIL"
+else
+  PBS_mail="#"
+fi
+
+### Use TIME inputed on command line over default values
+if [ -n "$TIME" ]; then
+  Time=$TIME
+fi
+
+
+### Format time to be hh:mm:ss (at minimum)
+Ncolon=`echo "${Time}" | grep -o ":" | wc -l`
+if [ $Ncolon == 0 ]; then
+  Time="00:$Time"
+fi
+PBS_time_suffix=":00"
+
+### Error Checks
+
+# If no inputs--display help
+if [ $nInput -lt "1" ]; then
+  help_ani
+fi
+
+# If incorrect inputs--display help
+if [ ${#species[@]} -lt "1" ]; then
+  printf '
+  Species must be defined using the -S switch!
+  See guide:
+  '
+  help_ani
+fi
+
+# If incorrect inputs--display help
+if [ ${#xray[@]} -ne "10" ]; then
+  printf '
+  Must have 10 parameters after the -x switch!
+  See guide:
+  '
+  help_ani
+fi
+
+# If incorrect inputs--display help
+if [ ${#electron[@]} -ne "11" ]; then
+  printf '
+  Must have 11 parameters after the -e switch!
+  See guide:
+  '
+  help_ani
+fi
+
+# If incorrect inputs--display help
+if [ ${#repeat[@]} -ne "3" ]; then
+  printf '
+  Must have 3 parameters after the -R switch!
+  See guide:
+  '
+  help_ani
+fi
+
+if [[ $SAED -eq "0" ]] && [[ $XRD -eq "0" ]]; then
+  printf '   No diffraction compute included!
+     -Set either -xrd or -saed to 1 \n\n '
+  exit 1
+fi
+
+#################################################################
+#################################################################
+##               Formatting Diffraction Computes               ##
+#################################################################
+#################################################################
+
+
+### Use debug default options 
+if [[ $DEBUG == "1" ]]; then 
+  unset xray
+  unset electron
+  xray=(${xray_debug[@]})
+  electron=(${electron_debug[@]})
+fi
+
+### Process species for each type
+declare -a Species=()
+for i in `seq  0 $(( ${#species[@]} -1))`;  do
+  if ! [[ ${species[$i]} =~ ^[0-9]+$ ]]; then
+    Species+=(${species[$i]})
+  else
+    if  [[ ${species[$(($i-1))]} =~ ^[0-9]+$ ]]; then
+      echo 'Error: If multiple species, place number after element symbol'
+      exit 1
+    fi
+    for j in `seq 1 $((${species[$i]}-1))`; do
+      Species+=(${species[$(($i-1))]})
+    done
+  fi
+done
+NTypes=${#Species[@]}
+
+
+### Process manual flag options
+if [[ ${xray[8]} -eq "1" ]]; then
+  Manual_x="manual"
+elif [[ ${xray[8]} -eq "0" ]]; then
+  Manual_x=""
+else 
+printf '
+  Manual flag must be 1/0 for xray!
+  See guide:
+  '
+  help_ani
+fi
+
+if [[ ${electron[9]} -eq "1" ]]; then
+  Manual_e="manual"
+elif [[ ${electron[9]} -eq "0" ]]; then
+  Manual_e=""
+else 
+printf '
+  Manual flag must be 1/0 for xray!
+  See guide:
+  '
+  help_ani
+fi
+
+### Process Phi_Ratio offload
+if (( $(echo ${xray[9]}'=='0 | bc -l) )); then
+  Ratio_x=""
+elif (( $(echo ${xray[9]}'>'0 | bc -l) && $(echo ${xray[9]}'<='1 | bc -l))); then
+  Ratio_x="ratio ${xray[9]}"
+else
+printf '
+  xPhi_Ratio must between 0-1!
+  See guide:
+  '
+  help_ani
+fi
+
+if (( $(echo ${electron[10]}'=='0 | bc -l) )); then
+  Ratio_e=""
+elif (( $(echo ${electron[10]}'>'0 | bc -l) && $(echo ${electron[10]}'<='1 | bc -l))); then
+  Ratio_e="ratio ${electron[10]}"
+else
+printf '
+  ePhi_Ratio must between 0-1!
+  See guide:
+  '
+  help_ani
+fi
+
+
+### Process active diffraction computations
+if  [[ $XRD -eq "1" ]]; then
+XRD_LAMMPS="
+compute         XRD all xrd \${xLambda} \${Species} 2Theta \${ThetaMin} &
+                \${ThetaMax} c \${xRes0} \${xRes1} \${xRes2} LP \${LP} ${Manual_x} ${Ratio_x} echo
+                
+fix             2 all ave/histo/weight 1 1 1  \${ThetaMin} \${ThetaMax} &
+                \${Nbins} c_XRD[1] c_XRD[2] mode vector file \$A.xrd"
+else
+XRD_LAMMPS="
+"
+fi
+
+if  [[ $SAED -eq "1" ]]; then
+SAED_LAMMPS="
+compute         SAED all saed \${eLambda} \${Species} Kmax \${Kmax} &
+                Zone \${Zone0} \${Zone1} \${Zone2} c \${eRes0} \${eRes1} \${eRes2} &
+                dR_Ewald \${dR_Ewald} ${Manual_e} ${Ratio_e} echo 
+                
+fix             1 all saed/vtk 1 1 1 c_SAED file \$A_saed
+"
+else
+SAED_LAMMPS="
+"
+fi
+
+### Special formating for triclinic systems
+if [[ $TRICLINIC -eq "1" ]]; then
+  DumpRegion="prism 0 1 0 1 0 1 0 0 0 "
+  ComStyle="brick"
+  Balance="0.9 shift xyz 5 1.0 "
+else
+  DumpRegion="block 0 1 0 1 0 1 "
+  ComStyle="tiled"
+  Balance="0.9 rcb"
+fi
+
+### Specify formatting for different atom styles, which influences data structure
+if [[ "${STYLE}" == "atomic" ]]; then
+  AtomStyle="atom_style      atomic"
+elif [[ "${STYLE}" == "charge" ]]; then
+  AtomStyle="atom_style      charge"
+else
+printf '
+  Data_Style not recognized!
+  See guide:
+  '
+  help_ani
+fi
+
+### Naming system for 'batch' jobs allowing simultaneous runs within the same directory
+Input=${Input}${BATCH}
+Diffraction_Base=${Diffraction_Base}${BATCH}
+
+#################################################################
+#################################################################
+##                   Create Master Input file                  ##
+#################################################################
+#################################################################
+
+cat > ${Diffraction_Base} << _EOF_
+
+variable  A string "SED_PREFIX_SED${BATCH}"
+log		\$A.log
+
+processors * * *
+
+#################################################################
+####################### Assign Variables ########################
+#################################################################
+
+variable        File          string "SED_FILENAME_SED"
+variable        Species       string "${Species[@]} "
+variable        NTypes        equal   ${NTypes}
+
+variable        eLambda       equal ${electron[0]}
+variable        Kmax          equal ${electron[1]}
+variable        Zone0         equal ${electron[2]}
+variable        Zone1         equal ${electron[3]}
+variable        Zone2         equal ${electron[4]}
+variable        eRes0         equal ${electron[5]}
+variable        eRes1         equal ${electron[6]}
+variable        eRes2         equal ${electron[7]}
+variable        dR_Ewald      equal ${electron[8]}
+
+variable        xLambda       equal ${xray[0]}
+variable        ThetaMin      equal ${xray[1]}
+variable        ThetaMax      equal ${xray[2]}
+variable        xRes0         equal ${xray[3]}
+variable        xRes1         equal ${xray[4]}
+variable        xRes2         equal ${xray[5]}
+variable        LP            equal ${xray[6]}
+variable        Nbins         equal ${xray[7]}
+
+#################################################################
+
+${AtomStyle}
+lattice         none 1.0
+SED_READ_STRUCT_SED
+SED_ASSIGN_MASS_SED
+
+replicate      ${repeat[0]} ${repeat[1]} ${repeat[2]}
+atom_modify    sort 0 0.0
+comm_style     ${ComStyle}
+balance        ${Balance}
+
+pair_style     none
+
+#################################################################
+########################### Computes ############################
+#################################################################
+
+${XRD_LAMMPS}
+${SAED_LAMMPS}
+
+run             0
+
+#################################################################
+############################ STOP ###############################
+#################################################################
+
+_EOF_
+
+Submit_File="run.${Title}${BATCH}"
+
+### Create a specific runscript for each input script
+cat > ${Submit_File} << _EOF_
+#!/bin/bash
+#PBS -N ${Title}
+#PBS -l application=${Application_Name}
+#PBS -l select=${NODES}:ncpus=${NCPUS}:mpiprocs=${PPN}
+#PBS -l walltime=${Time}${PBS_time_suffix}
+#PBS -q ${QUEUE}
+#PBS -A ${ACCOUNT}
+#PBS -j oe
+${PBS_mail}
+${PBS_extra}
+
+echo "This job was created by Version ${Version} of $0 on ${CLUSTER}"
+
+cd ${PWD}
+
+${Setup_Env}
+
+
+READ_DUMP="region          chamber ${DumpRegion} \\ncreate_box     ${NTypes} chamber \\nread_dump       \\\${File} XXXXX x y z box yes add yes"
+READ_DATA="read_data       \\\${File}"
+
+T0="\$(date +%s)"
+
+Ndumps_suffix=\`ls -l *$Find1 |wc -l\`
+Ndumps_prefix=\`ls -l $Find1* |wc -l\`
+Ndumps=\$((\$Ndumps_prefix + \$Ndumps_suffix))
+
+Ndata_suffix=\`ls -l *$Find2 |wc -l\`
+Ndata_prefix=\`ls -l $Find2* |wc -l\`
+Ndata=\$((\$Ndata_prefix + \$Ndata_suffix))
+
+Nstruct=\$((\$Ndata + \$Ndumps))
+
+if [ \$Nstruct -eq "0" ]; then 
+    echo " No dump files found in $PWD "
+    exit
+fi
+
+n=0
+
+if [ \$Ndumps_suffix -gt "0" ]; then 
+  for i in *.$Find1
+  do
+    D=\`echo \${i}\`
+    P=\`echo \${i%%.$Find1}\`
+    N=\`sed '2q;d' \$D\`
+    
+    cp ${Diffraction_Base} $Input.\$n
+
+    Masses_Assigned=\`grep -i Mass \${i} | wc -l\`
+    if [ "\${Masses_Assigned}" -eq "0" ]; then
+      MASS_LAMMPS="mass            \\* 1"
+    else 
+      MASS_LAMMPS=""
+    fi
+
+    sed  -i "s/SED_READ_STRUCT_SED/\${READ_DUMP}/g" $Input.\$n  
+    sed  -i "s/SED_ASSIGN_MASS_SED/\${MASS_LAMMPS}/g" $Input.\$n    
+    sed  -i 's/XXXXX/'\$N'/g' $Input.\$n
+    sed  -i 's/SED_FILENAME_SED/'\$D'/g' $Input.\$n
+    sed  -i 's/SED_PREFIX_SED/'\$P'/g' $Input.\$n
+    
+    n=\$((\$n+1))
+  done
+fi
+
+if [ \$Ndumps_prefix -gt "0" ]; then 
+  for i in $Find1.*
+  do
+    D=\`echo \${i}\`
+    P=\`echo \${i##${Find1}.}\`
+    N=\`sed '2q;d' \$D\`
+    
+    cp ${Diffraction_Base} $Input.\$n
+
+    Masses_Assigned=\`grep -i Mass \${i} | wc -l\`
+    if [ "\${Masses_Assigned}" -eq "0" ]; then
+      MASS_LAMMPS="mass            \\* 1"
+    else 
+      MASS_LAMMPS=""
+    fi
+
+    sed  -i "s/SED_READ_STRUCT_SED/\${READ_DUMP}/g" $Input.\$n  
+    sed  -i "s/SED_ASSIGN_MASS_SED/\${MASS_LAMMPS}/g" $Input.\$n    
+    sed  -i 's/XXXXX/'\$N'/g' $Input.\$n
+    sed  -i 's/SED_FILENAME_SED/'\$D'/g' $Input.\$n
+    sed  -i 's/SED_PREFIX_SED/'\$P'/g' $Input.\$n
+    
+    n=\$((\$n+1))
+  done
+fi  
+
+
+## Data Files ##
+
+if [ \$Ndata_suffix -gt "0" ]; then 
+  for i in *.$Find2
+  do
+    D=\`echo \${i}\`
+    P=\`echo \${i%%.$Find2}\`
+    N=\`sed '2q;d' \$D\`
+    
+    cp ${Diffraction_Base} $Input.\$n
+
+    Masses_Assigned=\`grep -i Mass \${i} | wc -l\`
+    if [ "\${Masses_Assigned}" -eq "0" ]; then
+      MASS_LAMMPS="mass            \\* 1"
+    else 
+      MASS_LAMMPS=""
+    fi
+
+    sed  -i "s/SED_READ_STRUCT_SED/\${READ_DATA}/g" $Input.\$n  
+    sed  -i "s/SED_ASSIGN_MASS_SED/\${MASS_LAMMPS}/g" $Input.\$n    
+    sed  -i 's/XXXXX/'\$N'/g' $Input.\$n
+    sed  -i 's/SED_FILENAME_SED/'\$D'/g' $Input.\$n
+    sed  -i 's/SED_PREFIX_SED/'\$P'/g' $Input.\$n
+    
+    n=\$((\$n+1))
+  done
+fi
+
+if [ \$Ndata_prefix -gt "0" ]; then 
+  for i in $Find2.*
+  do
+    D=\`echo \${i}\`
+    P=\`echo \${i##${Find2}.}\`
+    N=\`sed '2q;d' \$D\`
+    
+    cp ${Diffraction_Base} $Input.\$n
+
+    Masses_Assigned=\`grep -i Mass \${i} | wc -l\`
+    if [ "\${Masses_Assigned}" -eq "0" ]; then
+      MASS_LAMMPS="mass            \\* 1"
+    else 
+      MASS_LAMMPS=""
+    fi
+
+    sed  -i "s/SED_READ_STRUCT_SED/\${READ_DATA}/g" $Input.\$n  
+    sed  -i "s/SED_ASSIGN_MASS_SED/\${MASS_LAMMPS}/g" $Input.\$n    
+    sed  -i 's/XXXXX/'\$N'/g' $Input.\$n
+    sed  -i 's/SED_FILENAME_SED/'\$D'/g' $Input.\$n
+    sed  -i 's/SED_PREFIX_SED/'\$P'/g' $Input.\$n
+    
+    n=\$((\$n+1))
+  done
+fi
+
+  
+n=\$((\$n-1))
+ 
+# Run LAMMPS Jobs
+for i in \$(seq 0 \$n)
+do
+  echo " Computing diffraction \$((\$i+1)) of \$((\$n+1))"
+  ${MPI_launch} ${LAMMPS} < $Input.\$i
+done
+
+# Clean up temparary files
+rm $PWD/$Input*
+rm $PWD/log.*
+
+
+T1="\$((\$(date +%s)-T0))"
+printf "Compute Time for Diffraction: %02d:%02d:%02d:%02d\n" "\$((\$T1/86400))" "\$((\$T1/3600%24))" "\$((\$T1/60%60))" "\$((\$T1%60))"""
+
+_EOF_
+
+echo "  Submitting $Title on $CLUSTER to $QUEUE queue"
+
+${Submit_Command} ${Submit_File}
+
+echo " "
+
