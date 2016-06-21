@@ -27,7 +27,7 @@ exit 1
 
 #############  General Default Values ############# 
 
-machine_list=("gordon" "conrad" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet" "topaz" "thunder")
+machine_list=("gordon" "conrad" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet" "topaz" "thunder" "copper")
 
 gitMessage="general updates"
 
