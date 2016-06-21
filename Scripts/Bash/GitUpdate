@@ -45,7 +45,24 @@ Message=$1
 cd ~/Applications/My_GitHub/
 git add *
 git commit -m "${Message}" >& ~/.tmp_git
+
+Reject=`grep -c reject ~/.tmp_git`
+if [ $Reject != "0" ]; then
+  cat ~/.tmp_git
+  rm ~/.tmp_git
+  exit 1
+fi
+
 git push >& ~/.tmp_git
+
+Reject=`grep -c reject ~/.tmp_git`
+if [ $Reject != "0" ]; then
+  cat ~/.tmp_git
+  rm ~/.tmp_git
+  exit 1
+fi
+
+
 rm ~/.tmp_git
 }
 
