@@ -1,0 +1,82 @@
+variable        N string "Felix Ni sigma5 Reference Boundary"
+variable        A string "Nis17.800K"
+variable        t equal 800.0
+variable	seed equal 123456
+variable        c equal 3.5690029061119999
+variable	d equal 0.025
+
+units		metal
+boundary	f p p
+atom_style	atomic
+lattice		fcc $c
+### Read data and set up simulation
+atom_modify     map array sort 0 0.0
+
+read_data	scaled.800.data
+
+# EAM potential -- Ni
+pair_style      hybrid/overlay lj/cut 8 eam/fs
+pair_coeff      * * lj/cut 0 0
+pair_coeff      * * eam/fs ATVF.eam.fs Ni
+mass    	1 58.693
+
+#define regions 
+region		leftwall block INF 6.0 INF INF INF INF units box
+region		rightwall block 119.0 INF INF INF INF INF units box
+region		mobile block 6.001 118.9999 INF INF INF INF units box
+
+#define groups
+group		LB region leftwall 
+group		RB region rightwall
+group		GB region mobile
+
+# equilibrate
+velocity	GB create $t ${seed}
+fix		1 all nvt temp $t $t 0.1
+compute		GBtemp GB temp
+
+#re-neighbor
+neighbor	1.5 bin
+neigh_modify	delay 5
+
+# thremo output
+thermo          5
+thermo_style    custom step lx ly lz vol press temp etotal
+thermo_modify   lost warn flush yes
+dump            cdumptherm all custom 500 dump.therm.$A id type x y z 
+dump_modify     cdumptherm sort id
+timestep        0.001
+run             12000
+
+#Setup Felix's FCC/ORIENT
+reset_timestep	0
+unfix 1
+
+# Add synthetic driving force
+fix             GBf GB orient/fcc/lr 0 0 $d 0.5 orientations.800.vec
+fix		1 all nvt temp $t $t 0.1 
+
+### Shear Motion Measurements 
+#compute		ldisp LB displace/atom
+#compute		rdisp RB displace/atom
+#variable	netdx atom c_rdisp[1]-c_ldisp[1]
+#variable	netdyz atom sqrt((c_rdisp[2]-c_ldisp[2])^2+(c_rdisp[3]-c_ldisp[3])^2)
+#compute		avedx LB reduce ave v_netdx
+#compute		avedyz RB reduce ave v_netdyz
+
+thermo          5
+thermo_style    custom step pxx pyy pzz vol press c_GBtemp etotal ke pe #c_avedx c_avedyz
+thermo_modify   lost warn flush yes
+
+# Computes
+compute		KE all ke/atom
+compute		PE all pe/atom
+compute		CENTRO all centro/atom fcc
+
+
+restart		100000 restart
+
+dump            cdump all custom 500 dump.$A id type x y z c_PE c_KE c_CENTRO fx fy fz f_GBf[1] f_GBf[2] 
+dump_modify     cdump sort id
+timestep        0.001
+run             400000

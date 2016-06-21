@@ -1,0 +1,22 @@
+dimension 3
+boundary p p p
+units metal
+atom_style atomic
+lattice fcc 4.05
+read_data gb/sigma7.lammps
+pair_style hybrid/overlay lj/cut 4 eam/alloy
+pair_coeff * * lj/cut 0 0
+pair_coeff * * eam/alloy pot/AlMishin.eam.alloy Al
+comm_modify cutoff 8
+timestep 0.001
+thermo 100
+fix integrator all npt temp 750 750 0.1 iso 0 0 0.1
+velocity all create 1500 1
+thermo_style custom step temp etotal press spcpu
+run 2000
+fix eco all eco/force 0.001 0.25 3.645 gb/sigma7.ori
+reset_timestep 0
+thermo_style custom step temp etotal press f_eco spcpu
+dump save all custom 1000 aldata.dump xs ys zs f_eco[1] f_eco[2]
+dump_modify save sort id
+run 10000

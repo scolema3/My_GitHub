@@ -1,0 +1,85 @@
+\documentclass[11pt]{article}
+
+\begin{document}
+\section{fix eco/force command}
+\emph{fix ID group-ID eco/force u0 eta rcut file}
+\begin{itemize}
+\item{ID, group-ID are documented in fix command}
+\item{u0 = energy added to each atom (energy units)}
+\item{eta = cutoff value (usually 0.25)}
+\item{rcut = cutoff radius for orientation parameter calculation}
+\item{file = file that specifies orientation of each grain}
+\end{itemize}
+Examples:
+\emph{fix gb all eco/force 0.002 0.25 3.8 sigma7.ori}
+\subsection{Description:}
+The fix applies an orientation-dependent force to atoms near a planar grain boundary which can be used to induce grain boundary migration (in the direction perpendicular to the grain boundary plane). The motivation and explanation of this force and its application are described in (Ulomek). The force is only applied to atoms in the fix group.
+The basic idea is that atoms in one grain (on one side of the boundary) have a potential energy 0.5*u0 added to them. Atoms in the other grain have -0.5*u0 potential energy added. Atoms near the boundary (whose neighbor environment is intermediate between the two grain orientations) have an energy between 0.5*u0 and -0.5*u0 added. This creates an effective driving force to reduce the potential energy of atoms near the boundary by pushing them towards one of the grain orientations. Thus this fix is designed for simulations of two-grain systems, either with one grain boundary and free surfaces parallel to the boundary, or a system with periodic boundary conditions and two equal and opposite grain boundaries. In either case, the entire system can displace during the simulation, and such motion should be accounted for in measuring the grain boundary velocity.
+The potential energy u\_j added to atom j is given by these formulas
+
+\begin{eqnarray}
+w(|\vec{R}_{jk}|)=w_{jk}=\left\{\begin{array}{lc}
+\frac{|\vec{R}_{jk}|^{4}}{R_{cut}^{4}}-2\frac{|\vec{R}_{jk}|^{2}}{R_{cut}^{2}}+1, & |\vec{R}_{jk}|<R_{cut} \\
+0, & |\vec{R}_{jk}|>R_{cut}
+\end{array}\right.
+\label{eq:envelope}
+\end{eqnarray}
+
+\begin{eqnarray}
+\chi_{j} & = & \frac{1}{N}\sum_{\gamma,k,l}{\kappa_{\gamma}w_{jk}w_{jl}\cos(\vec{Q}_{\gamma}\vec{R}_{kl})}
+\label{eq:force-long}
+\end{eqnarray}
+
+\begin{eqnarray}
+u_{j}(\chi_{j}) & = & \frac{u_{0}}{2}\left\{\begin{array}{lc}
+1, & \chi_{j}>\eta\\
+\sin\left(\frac{2\pi}{\eta}\chi_{j}\right), &  -\eta<\chi_{j}<\eta\\
+-1, & \chi_{j}<-\eta
+\end{array}\right.
+\label{eq:energy-mid}
+\end{eqnarray}
+
+which are fully explained in (Ulomek).\\
+\\
+The derivative of this energy expression gives the force on each atom which thus depends on the orientation of its neighbors relative to the 2 grain orientations. Only atoms near the grain boundary feel a net force which tends to drive them to one of the two grain orientations.
+The order of the vectors in the orientation file determines which grain wants to grow at the expense of the other. Reversing the order of the vectors is equivalent to using a negative value for u0.
+The rcut parameter is the range the orientation parameter is calculated for and should be chosen to at least generously include the next nearest atomic neighbors, dependent on crystal structure. Increasing this value negatively affects calculation time, but will increase angular resolution of the orientation parameter Chi. I.e. for low angle grain boundaries a higher value might be beneficial. 
+Setting a rcut value higher than the cutoff value of the used potential currently requires the following work around of applying a \emph{hybrid/overlay} potential:\\
+\\
+pair\_style hybrid/overlay lj/cut 4 eam/alloy\\
+pair\_coeff * * lj/cut 0 0\\
+pair\_coeff * * eam/alloy pot/AlMishin.eam.alloy Al\\
+\\
+Note that using a \emph{hybrid} potential does not work.\\
+The communication distance for ghost atoms in LAMMPS must be twice larger than rcut. This value must be independently set in the input file with the \emph{comm\_modify} command.
+The u0 parameter is the maximum amount of additional energy added to each atom in the grain which wants to shrink.
+The eta parameter is used to reduce the force added to bulk atoms in each grain far away from the boundary. An atom in the bulk surrounded by neighbors at the ideal grain orientation would compute an order parameter of -1 or 1 and have no force added. However, thermal vibrations in the solid will cause the order parameters to be less than -1 or bigger than 1. The eta parameters mask this effect, allowing forces to only be added to atoms with order-parameters between -eta and eta.
+File is the filename for the two grain orientations and contains 6 vectors (6 lines with 3 values per line) which specify 3 basis vectors for the first grain and 3 for the second grain in the grain orientations. The vector lengths should all be identical and scaled according to the lattice constant. A sample orientation file for a Sigma=7 tilt boundary is shown below.
+
+If the parameter u0=0 is chosen the force calculation is omitted to speed up the calculation, which allows the fix to be used for boundary tracking.
+
+\subsection{Restart, fix\_modify, output, run start/stop, minimize info:}
+No information about this fix is written to binary restart files.
+The fix\_modify energy option is supported by this fix to add the potential energy of atom interactions with the grain boundary driving force to the system's potential energy as part of thermodynamic output.
+This fix calculates a global scalar which can be accessed by various output commands. The scalar is the potential energy change due to this fix. The scalar value calculated by this fix is "extensive".
+This fix also calculates a per-atom array which can be accessed by various output commands. The array stores the order parameter Chi and normalized order parameter (-1 to 1) for each atom. The per-atom values can be accessed on any timestep.
+No parameter of this fix can be used with the start/stop keywords of the run command. This fix is not invoked during energy minimization.
+\subsection{Restrictions:}
+This fix is part of the MISC package. It is only enabled if LAMMPS was built with that package. See the Making LAMMPS section for more info.
+\subsection{Related commands:}
+\emph{comm\_modify}
+\emph{fix\_modify}
+
+Default: none
+
+(Ulomek) Ulomek, O'Brien, Foiles, Mohles, ...
+
+For illustration purposes, here are example files that specify a Sigma=7 <111> tilt boundary. This is for a lattice constant of 4.05 Angs.
+\subsection{file:}
+   0.312464    1.623612    2.338269
+   1.249857   -1.082408    2.338269
+  -1.562321   -0.541204    2.338269
+   1.249857    1.082408    2.338269
+   0.312464   -1.623612    2.338269
+  -1.562321    0.541204    2.338269
+\end{document}
