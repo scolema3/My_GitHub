@@ -27,7 +27,7 @@ exit 1
 
 #############  General Default Values ############# 
 
-machine_list=("conrad" "gordon" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet" "thunder" "topaz")
+machine_list=("conrad" "gordon" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet" "thunder" "topaz" "copper")
 Clean=0
 now=`date +"%Y_%m_%d"`
 
@@ -55,7 +55,8 @@ local_update()
 cd /home/scoleman/Applications/LAMMPS/lammps_devel/src
 git pull  >& ~/.trash_update
 make package-update >& ~/.trash_update
-cp ~/Applications/My_GitHub/USER-DIFFRACTION/src/devel/* ./
+cp ~/Applications/My_GitHub/LAMMPS/USER-DIFFRACTION/src/devel/* ./
+cp ~/Applications/My_GitHub/LAMMPS/LAMMPS_MISC/src/* ./
 version=`awk -F\" '{print \$(NF-1)}' version.h  | sed -e 's/ /_/g'`
 make mpi -j12 >& ~/.trash_update
 
@@ -70,7 +71,8 @@ echo "Working on local, successfully completed devel branch"
 cd /home/scoleman/Applications/LAMMPS/lammps_devel/src
 git pull  >& ~/.trash_update
 make package-update >& ~/.trash_update
-cp ~/Applications/My_GitHub/USER-DIFFRACTION/src/devel/* ./
+cp ~/Applications/My_GitHub/LAMMPS/USER-DIFFRACTION/src/devel/* ./
+cp ~/Applications/My_GitHub/LAMMPS/LAMMPS_MISC/src/* ./
 version=`awk -F\" '{print \$(NF-1)}' version.h  | sed -e 's/ /_/g'`
 make mpi -j12 >& ~/.trash_update
 
@@ -87,11 +89,13 @@ cmdfile=tmp_file
 cat > ~/.${cmdfile} << _EOF_
 source ~/.bashrc 
 source ~/.profile
-cd ~/Lammps/Diffraction/src  
+cd ~/Lammps/Diffraction/src
+git stash
 git pull
 version=\`awk -F\" '{print \$(NF-1)}' version.h  | sed -e 's/ /_/g'\`
 make package-update
-cp ~/My_GitHub/USER-DIFFRACTION/src/devel/* ./ 
+cp ~/My_GitHub/LAMMPS/USER-DIFFRACTION/src/devel/* ./
+cp ~/My_GitHub/LAMMPS/LAMMPS_MISC/src/* ./ 
 MakefileList=\`ls lmp_*\`
 MakefileList=(\$MakefileList)
 ${Clean_cmd}
