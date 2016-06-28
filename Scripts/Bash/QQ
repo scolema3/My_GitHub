@@ -1,14 +1,11 @@
 #!/bin/sh 
 
 
-Version=0.01
-
+Version=0.03
 
 user_list=("scoleman" "ehernan" "krl" "mtschopp" "djf92" "mcg84")
 queue_list=("debug" "standard" "frontier")
 machine_list=("gordon" "conrad" "shepard" "armstrong" "haise" "kilrain" "excalibur" "spirit" "garnet" "topaz" "thunder")
-
-
 
 ############# Remote Commands ############# 
 
@@ -81,6 +78,7 @@ chmod 777 ~/.${cmdfile}
 
 remote_qq() 
 {
+
 machine=$1
 scp ~/.${cmdfile} ${machine}:~/.${cmdfile} >& ~/.trash_file  
 ssh ${machine} "source ~/.bashrc ; ~/.${cmdfile} ${machine} " >& ~/.tmp_qq_${machine}
@@ -96,11 +94,9 @@ if [ $error1 != "0" ]; then
     exit 1
   fi
 fi
- 
 
-# Report information 
-echo "`tail -n 1 ~/.tmp_qq_${machine}`"
-#rm ~/.tmp_qq_${machine}
+printf "."
+
 
 }
 
@@ -108,9 +104,7 @@ echo "`tail -n 1 ~/.tmp_qq_${machine}`"
 ############# Update Now ############# 
 
 
-printf "%15s %-19s %13s %13s %13s\n" "CLUSTER | " "           LSBM             |"   "     DEBUG      |"  "    STANDARD    |"  "    FRONTIER    |"
-printf "%15s %5s %6s %7s %5s %s %6s %7s %s %6s %7s %s %6s %7s %s\n" "-------------| " "Total" "Queued" "Running" "Hold" " |" "Queued" "Running" " |" "Queued" "Running" " |" "Queued" "Running" " |"
-
+printf "QQ (v-$Version) is getting data from remote servers"
 for i in `seq  0 $(( ${#user_list[@]} -1))`;  do
   UserT[$i]=0
   UserQ[$i]=0
@@ -121,6 +115,15 @@ done
 
 for machine in ${machine_list[*]}; do
   remote_qq $machine &
+done
+wait
+
+printf "\n%15s %-19s %13s %13s %13s\n" "CLUSTER | " "           LSBM             |"   "     DEBUG      |"  "    STANDARD    |"  "    FRONTIER    |"
+printf "%15s %5s %6s %7s %5s %s %6s %7s %s %6s %7s %s %6s %7s %s\n" "-------------| " "Total" "Queued" "Running" "Hold" " |" "Queued" "Running" " |" "Queued" "Running" " |" "Queued" "Running" " |"
+
+# Report information
+for machine in ${machine_list[*]}; do
+  echo "`tail -n 1 ~/.tmp_qq_${machine}`"
   IFS=', ' read -r -a tmp1 <<< `tail -n 4 ~/.tmp_qq_${machine}  | head -1`
   IFS=', ' read -r -a tmp2 <<< `tail -n 3 ~/.tmp_qq_${machine}  | head -1`
   IFS=', ' read -r -a tmp3 <<< `tail -n 2 ~/.tmp_qq_${machine}  | head -1`

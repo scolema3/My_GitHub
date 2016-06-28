@@ -86,6 +86,9 @@ case ${Host} in
   spirit*)    CLUSTER='Spirit';;
   gordon*)    CLUSTER='Gordon';;
   conrad*)    CLUSTER='Conrad';;
+  thunder*)   CLUSTER='Thunder';;    
+  topaz*)     CLUSTER='Topaz';;    
+  copper*)    CLUSTER='Copper';;
   *)  "Host not recognized! "; exit 0 ;;
 esac
 
@@ -190,8 +193,8 @@ elif [ $CLUSTER == "Spirit" ]; then
   Submit_Command=qsub
 
 
-############# Garnet Default Values #############
-elif [ $CLUSTER == "Garnet" ]; then
+############# Garnet or Copper Default Values #############
+elif [ $CLUSTER == "Garnet" ] || [ $CLUSTER == "Copper" ] ; then
   
   ## Architecture and Environment
   NCPUS=32

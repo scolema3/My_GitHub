@@ -53,6 +53,7 @@ local_update()
 {
 
 cd /home/scoleman/Applications/LAMMPS/lammps_devel/src
+git stash >& ~/.trash_update
 git pull  >& ~/.trash_update
 make package-update >& ~/.trash_update
 cp ~/Applications/My_GitHub/LAMMPS/USER-DIFFRACTION/src/devel/* ./
@@ -69,6 +70,7 @@ cp lmp_mpi ~/Applications/bin/lmp_versions/lmp_diff_${now}_v${version}
 echo "Working on local, successfully completed devel branch" 
 
 cd /home/scoleman/Applications/LAMMPS/lammps_devel/src
+git stash >& ~/.trash_update
 git pull  >& ~/.trash_update
 make package-update >& ~/.trash_update
 cp ~/Applications/My_GitHub/LAMMPS/USER-DIFFRACTION/src/devel/* ./

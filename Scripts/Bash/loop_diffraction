@@ -242,7 +242,8 @@ if [ $CLUSTER == "Excalibur" ]; then
   fi
   nOMP=$(( $NCPUS / $PPN ))
   nMPI=$(( $PPN * $NODES ))
-  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+  Setup_Env="alias mpicc='/opt/cray/craype/2.2.1/bin/cc'
+export OMP_NUM_THREADS=${nOMP}"
 
   ## Specific Queue Options ##
   if [ ${QUEUE:0:1} == "d" ]; then
@@ -307,9 +308,9 @@ elif [ $CLUSTER == "Spirit" ]; then
   Submit_Command=qsub
 
 
-############# Garnet Default Values #############
-elif [ $CLUSTER == "Garnet" ]; then
-  
+############# Garnet or Copper Default Values #############
+elif [ $CLUSTER == "Garnet" ] || [ $CLUSTER == "Copper" ]; then
+   
   ## Architecture and Environment
   NCPUS=32
   if [ ${PPN_SET:0:1} == "M" ]; then
@@ -321,7 +322,8 @@ elif [ $CLUSTER == "Garnet" ]; then
   fi
   nOMP=$(( $NCPUS / $PPN ))
   nMPI=$(( $PPN * $NODES ))
-  Setup_Env="export OMP_NUM_THREADS=${nOMP}"
+  Setup_Env="module swap PrgEnv-pgi PrgEnv-intel
+export OMP_NUM_THREADS=${nOMP}"
 
   ## Specific Queue Options ##    
   if [ ${QUEUE:0:1} == "d" ]; then
@@ -351,7 +353,7 @@ elif [ $CLUSTER == "Garnet" ]; then
 
 
 ############# Shepard or Armstrong Default Values #############
-elif [ $CLUSTER == "Shepard" ] || [ $CLUSTER == "Armstrong" ] ; then
+elif [ $CLUSTER == "Shepard" ] || [ $CLUSTER == "Armstrong" ]; then
   
   ## Architecture and Environment
   NCPUS=24
@@ -420,7 +422,7 @@ export MIC_KMP_PLACE_THREADS=\"59c,4t\" "
 
 
 ############# Conrad or Gordon Default Values #############
-elif [ $CLUSTER == "Conrad" ] || [ $CLUSTER == "Gordon" ] ; then
+elif [ $CLUSTER == "Conrad" ] || [ $CLUSTER == "Gordon" ]; then
   
   ## Architecture and Environment
   NCPUS=32
