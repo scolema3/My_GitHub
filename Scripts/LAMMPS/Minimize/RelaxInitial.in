@@ -1,0 +1,273 @@
+variable    PREFIX    string   B11Cp_CBC_hex_1x1x1
+log ${PREFIX}.log
+
+#################################################################
+# --------------- Setup Simulation Variables ------------------ #
+#################################################################
+
+variable     Name         string   ${PREFIX}
+
+## Potential Information
+
+variable     UNITS        string "real"
+variable     ATOM_STYLE   string "charge"
+variable     POT_FILE     string "ffield.goddard.txt"
+
+## Intitial Structure
+variable     DataFile     string   data.b4c
+variable     DumpFile     string   Input.dump
+variable     Ntypes       equal    2
+variable     Species      string  "B C "
+
+variable     Replicate    string  "1 1 1"
+variable     dRandom      equal    0.00
+variable     seed         equal    1435523
+
+## Minimization Criteria
+variable     etol         equal    1e-15
+variable     ftol         equal    1e-15
+variable     maxiter      equal    1e5
+variable     maxeval      equal    1e5
+variable     NminLoops    equal    15
+
+## Hydrostatic Load/Unload
+
+
+
+variable     VolExpand     equal    0.05  
+variable     NSteps        equal    15
+variable     NCycles       equal    2
+
+variable     pconvert     equal    0.000101325
+variable     P_units      string   "GPa"
+
+variable     econvert     equal    0.043363
+variable     E_units      string  "eV"
+
+
+#################################################################
+# ------------------- Initialize simulation ------------------- #
+#################################################################
+clear
+
+units         ${UNITS}
+dimension     3
+boundary      p p p
+atom_style    ${ATOM_STYLE}
+
+read_data     ${DataFile}
+replicate     ${Replicate}
+
+#lattice        none 1.0
+#region         chamber block 0 1 0 1 0 1
+#region         chamber prism 0 1 0 1 0 1 0 0 0
+#create_box     ${Ntypes} chamber
+#read_dump      ${DumpFile} 0 x y z q box yes add yes
+#replicate      1 1 1
+#mass           1 10.811000
+#mass           2 12.010700
+
+atom_modify   sort 0 0.0
+
+pair_style    reax/c NULL
+pair_coeff    * * ${POT_FILE} ${Species}
+fix           0 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
+
+
+#################################################################
+# --------------------- Compute/Variables --------------------- #
+#################################################################
+thermo_style     custom step temp ke pe press pxx pyy pzz pxy pxz pyz lx ly lz vol cella cellb cellc cellalpha cellbeta cellgamma
+run              0
+
+compute          S all stress/atom NULL
+variable         Pstep   equal step
+variable         Ppress  equal "v_pconvert*-press"
+variable         Ptemp   equal temp
+variable         Ppe     equal "v_econvert*pe"
+variable         Pke     equal "v_econvert*ke"
+variable         Ppxx    equal "v_pconvert*pxx"
+variable         Ppyy    equal "v_pconvert*pyy"
+variable         Ppzz    equal "v_pconvert*pzz"
+variable         Ppxy    equal "v_pconvert*pxy"
+variable         Ppxz    equal "v_pconvert*pxz"
+variable         Ppyz    equal "v_pconvert*pyz"
+variable         Plx     equal lx
+variable         Ply     equal ly
+variable         Plz     equal lz
+variable         Pvol    equal vol
+variable         Pcella  equal cella
+variable	     Pcellb  equal cellb
+variable         Pcellc  equal cellc
+variable         Pcellalpha equal cellalpha
+variable         Pcellbeta  equal cellbeta
+variable         Pcellgamma equal cellgamma
+variable         PvM     equal "sqrt(1/2*((pxx-pyy)^2+(pyy-pzz)^2+(pzz-pxx)^2 &
+                                +6*(pxy^2+pxz^2+pyz^2)))*v_pconvert"
+
+variable         coE    equal  "v_econvert*pe/count(all)"
+
+variable         vM      atom  "v_pconvert*sqrt( 1/2*( (c_S[1]-c_S[2])^2 &
+                                +(c_S[2]-c_S[3])^2+(c_S[3]-c_S[1])^2 &
+                                +6*(c_S[4]^2+c_S[5]^2+c_S[6]^2)))"
+variable         hydro   atom   "v_pconvert*(c_S[1]+c_S[2]+c_S[3])/3"
+
+
+## Add some noise!
+displace_atoms  all random ${dRandom} ${dRandom} ${dRandom} ${seed}
+dump            1 all custom 1 ${Name}_random.dump id type x y z q &
+                fx fy fz v_vM v_hydro c_S[1] c_S[2] c_S[3] c_S[4] c_S[5] c_S[6]
+run             1
+undump          1
+
+## Go to Minimization Loop Routine
+variable      NameAdd      string "Min1"
+include       MasterMinLoop.in
+
+
+## Go to Hydrostatic Load Loop Routine
+variable      NameAdd       string "Load1"
+include       MasterLoadLoop.in
+
+
+#################################################################
+# ------------------------ Start Again! ----------------------- #
+#################################################################
+clear
+print "${Name}_${NameAdd}_${EMinStep}.dump"
+
+units          ${UNITS}
+atom_style     ${ATOM_STYLE}
+lattice        none 1.0
+region         chamber prism 0 1 0 1 0 1 0 0 0
+create_box     ${Ntypes} chamber 
+
+read_dump      ${Name}_${NameAdd}_${EMinStep}.dump 0 x y z q box yes add yes
+
+mass           1 10.811000
+mass           2 12.010700
+#mass           3 10.811000
+#mass           4 12.010700
+#mass           5 10.811000
+
+atom_modify   sort 0 0.0
+
+pair_style    reax/c NULL
+pair_coeff    * * ${POT_FILE} ${Species}
+fix           0 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
+
+#################################################################
+# --------------------- Compute/Variables --------------------- #
+#################################################################
+thermo_style     custom step temp ke pe press pxx pyy pzz pxy pxz pyz lx ly lz vol cella cellb cellc cellalpha cellbeta cellgamma
+run              0
+
+compute          S all stress/atom NULL
+
+## Go to Minimization Loop Routine
+variable      NameAdd      string "Min2"
+include       MasterMinLoop.in
+
+
+## Go to Hydrostatic Load Loop Routine
+variable      NameAdd       string "Load2"
+include       MasterLoadLoop.in
+
+
+#################################################################
+# ------------------------ Start Again! ----------------------- #
+#################################################################
+clear
+print "${Name}_${NameAdd}_${EMinStep}.dump"
+
+units          ${UNITS}
+atom_style     ${ATOM_STYLE}
+lattice        none 1.0
+region         chamber prism 0 1 0 1 0 1 0 0 0
+create_box     ${Ntypes} chamber
+
+read_dump      ${Name}_${NameAdd}_${EMinStep}.dump 0 x y z q box yes add yes
+
+mass           1 10.811000
+mass           2 12.010700
+#mass           3 10.811000
+#mass           4 12.010700
+#mass           5 10.811000
+
+atom_modify   sort 0 0.0
+
+pair_style    reax/c NULL
+pair_coeff    * * ${POT_FILE} ${Species}
+fix           0 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
+
+#################################################################
+# --------------------- Compute/Variables --------------------- #
+#################################################################
+thermo_style     custom step temp ke pe press pxx pyy pzz pxy pxz pyz lx ly lz vol cella cellb cellc cellalpha cellbeta cellgamma
+run              0
+
+compute          S all stress/atom NULL
+
+## Go to Minimization Loop Routine
+variable      NameAdd      string "Min3"
+include       MasterMinLoop.in
+
+
+## Go to Hydrostatic Load Loop Routine
+variable      NameAdd       string "Load3"
+include       MasterLoadLoop.in
+
+#################################################################
+# ------------------------ Start Again! ----------------------- #
+#                                                               @
+#------------------------- Final Steps ------------------------ #
+#                                                               @
+#################################################################
+clear
+print "${Name}_${NameAdd}_${EMinStep}.dump"
+
+units          ${UNITS}
+atom_style     ${ATOM_STYLE}
+lattice        none 1.0
+region         chamber prism 0 1 0 1 0 1 0 0 0
+create_box     ${Ntypes} chamber
+
+read_dump      ${Name}_${NameAdd}_${EMinStep}.dump 0 x y z q box yes add yes
+
+mass           1 10.811000
+mass           2 12.010700
+#mass           3 10.811000
+#mass           4 12.010700
+#mass           5 10.811000
+
+atom_modify   sort 0 0.0
+
+pair_style    reax/c NULL
+pair_coeff    * * ${POT_FILE} ${Species}
+fix           0 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
+
+#################################################################
+# --------------------- Compute/Variables --------------------- #
+#################################################################
+thermo_style     custom step temp ke pe press pxx pyy pzz pxy pxz pyz lx ly lz vol cella cellb cellc cellalpha cellbeta cellgamma
+run              0
+
+compute          S all stress/atom NULL
+
+## Go to Minimization Loop Routine
+variable      NameAdd      string "Min4"
+include       MasterMinLoop.in
+
+
+## Output Final Structure 
+
+reset_timestep  0
+dump            1 all custom 1 ${Name}_FilalMin.dump id type x y z q fx fy fz &
+                v_vM v_hydro c_S[1] c_S[2] c_S[3] c_S[4] c_S[5] c_S[6] 
+
+write_data      ${Name}_FinalMin.data
+write_restart   ${Name}_FinalMin.restart
+run             0
+
+
+

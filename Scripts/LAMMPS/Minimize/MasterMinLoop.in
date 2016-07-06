@@ -1,0 +1,68 @@
+#################################################################
+# ------------------------ Mimization ------------------------- #
+#################################################################
+
+## Setup 
+
+variable         MinLoopStep  loop ${NminLoops}
+variable         StepCount    equal 0
+
+
+## Output important data to file
+
+thermo_style     custom step temp ke pe v_coE press v_PvM pxx pyy pzz pxy pxz pyz lx ly lz vol cella cellb cellc cellalpha cellbeta cellgamma 
+fix              data all print 1 "${Pstep} ${Ptemp} ${Pke} ${Ppe} ${coE} ${Ppress} &
+${PvM} ${Ppxx} ${Ppyy} ${Ppzz} ${Ppxy} ${Ppxz} ${Ppyz} ${Plx} ${Ply} ${Plz} ${Pvol} &
+${Pcella} ${Pcellb} ${Pcellc} ${Pcellalpha} ${Pcellbeta} ${Pcellgamma}" &
+screen no file ${Name}_${NameAdd}.txt title "step temp ke pe coE press v_PvM &
+pxx pyy pzz pxy pxz pyz lx ly lz vol a b c alpha beta gamma"
+thermo           10
+run              1
+
+## Loop 
+
+label          MinLoop
+print          ${MinLoopStep}
+
+## Box Relax ON
+
+#fix             1 all box/relax aniso 0.0 vmax 0.01
+fix             1 all box/relax tri 0.0 vmax 0.01 nreset 50
+min_style       cg
+minimize        ${etol} ${ftol} ${maxiter} ${maxeval}
+unfix           1
+
+variable        StepCountP1 equal "v_StepCount+1"
+variable        StepCount equal   ${StepCountP1}
+reset_timestep  ${StepCount}
+run             1
+
+reset_timestep  0
+dump            1 all custom 1 ${Name}_${NameAdd}_${StepCount}.dump id type x y z q &
+                fx fy fz v_vM v_hydro c_S[1] c_S[2] c_S[3] c_S[4] c_S[5] c_S[6]  
+run             0
+undump          1
+
+
+## Box Relax OFF
+
+min_style       cg
+minimize        ${etol} ${ftol} ${maxiter} ${maxeval}
+
+variable        StepCountP1 equal "v_StepCount+1"
+variable        StepCount equal   ${StepCountP1}
+reset_timestep  ${StepCount}
+run             1
+
+reset_timestep  0
+dump            1 all custom 1 ${Name}_${NameAdd}_${StepCount}.dump id type x y z q &
+                fx fy fz v_vM v_hydro c_S[1] c_S[2] c_S[3] c_S[4] c_S[5] c_S[6] 
+run             0
+undump          1
+
+next            MinLoopStep
+jump            SELF MinLoop
+
+
+## Clean-up
+unfix           data

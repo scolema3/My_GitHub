@@ -1,0 +1,112 @@
+## Setup 
+
+variable       CycleStep     loop ${NCycles}
+variable       DoubleSteps   equal "2*v_NSteps"
+
+variable       ScaleExpandL   equal "1+(((1+v_VolExpand)^(1/3)-1)/v_NSteps)"  
+variable       ScaleExpandU   equal "1-(((1+v_VolExpand)^(1/3)-1)/v_NSteps)" 
+
+variable       StepCount     equal 0
+
+## Tracking Minimum energy structure
+
+variable       Enow        equal v_coE
+variable       EMin        equal ${Enow}
+variable       EMinStep    equal 0
+
+
+## Output important data to file
+thermo_style     custom step temp ke pe v_coE press v_PvM pxx pyy pzz pxy pxz pyz lx ly lz vol cella cellb cellc cellalpha cellbeta cellgamma 
+fix              data all print 1 "${Pstep} ${Ptemp} ${Pke} ${Ppe} ${coE} ${Ppress} &
+${PvM} ${Ppxx} ${Ppyy} ${Ppzz} ${Ppxy} ${Ppxz} ${Ppyz} ${Plx} ${Ply} ${Plz} ${Pvol} &
+${Pcella} ${Pcellb} ${Pcellc} ${Pcellalpha} ${Pcellbeta} ${Pcellgamma}" &
+screen no file ${Name}_${NameAdd}.txt title "step temp ke pe coE press v_PvM &
+pxx pyy pzz pxy pxz pyz lx ly lz vol a b c alpha beta gamma"
+thermo           10
+run              1
+
+reset_timestep  0
+dump            1 all custom 1 ${Name}_${NameAdd}_${StepCount}.dump id type x y z q &
+                fx fy fz v_vM v_hydro c_S[1] c_S[2] c_S[3] c_S[4] c_S[5] c_S[6] 
+run             0
+undump          1
+
+
+label           Cycle
+#################################################################
+# --------------------- Running Cycles ------------------------ #
+#################################################################
+
+if "${CycleStep} == 1" then &
+   "variable       LoadLoopStep  loop ${NSteps}" &
+else &
+   "variable       LoadLoopStep loop ${DoubleSteps}"
+
+variable       ULoadLoopStep loop ${DoubleSteps}
+
+
+label           LoadLoop
+#################################################################
+# -------------------- Hydrostatic Load ----------------------- #
+#################################################################
+
+change_box      all x scale ${ScaleExpandL} y scale ${ScaleExpandL} z scale ${ScaleExpandL} remap
+minimize        ${etol} ${ftol} ${maxiter} ${maxeval}
+
+variable        StepCountP1 equal "v_StepCount+1"
+variable        StepCount equal   ${StepCountP1}
+reset_timestep  ${StepCount}
+run             1
+
+reset_timestep  0
+dump            1 all custom 1 ${Name}_${NameAdd}_${StepCount}.dump id type x y z q &
+                fx fy fz v_vM v_hydro c_S[1] c_S[2] c_S[3] c_S[4] c_S[5] c_S[6] 
+run             0
+undump          1
+
+if "${Enow} < ${EMin}" then &
+   "variable       EMin        equal ${Enow}" &
+   "variable       EMinStep    equal ${StepCount}"
+
+next            LoadLoopStep
+jump            SELF LoadLoop
+
+
+label           UnLoadLoop
+#################################################################
+# ------------------- Hydrostatic UnLoad ---------------------- #
+#################################################################
+
+change_box      all x scale ${ScaleExpandU} y scale ${ScaleExpandU} z scale ${ScaleExpandU} remap
+minimize        ${etol} ${ftol} ${maxiter} ${maxeval}
+
+
+variable        StepCountP1 equal "v_StepCount+1"
+variable        StepCount equal   ${StepCountP1}
+reset_timestep  ${StepCount}
+run             1
+
+reset_timestep  0
+dump            1 all custom 1 ${Name}_${NameAdd}_${StepCount}.dump id type x y z q &
+                fx fy fz v_vM v_hydro c_S[1] c_S[2] c_S[3] c_S[4] c_S[5] c_S[6] 
+run             0
+undump          1
+
+if "${Enow} < ${EMin}" then &
+   "variable       EMin        equal ${Enow}" &
+   "variable       EMinStep    equal ${StepCount}"
+
+next            ULoadLoopStep
+jump            SELF UnLoadLoop
+
+
+
+next            CycleStep
+jump            SELF Cycle
+
+
+
+## Clean-up
+print          "Minimum State At: ${EMinStep}"
+unfix           data
+

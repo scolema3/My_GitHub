@@ -1,5 +1,7 @@
-%% Three examples for the grain boundary builder script
-%% Example 1: Simplest Metal Test
+addpath('/home/scoleman/Applications/My_GitHub/Projects/GB_Builder/MATLAB/')
+
+%% Examples for the grain boundary builder script
+%% Example 1a: Simplest  FCC Metal Test
 
 clear;clc;close all
 
@@ -25,6 +27,37 @@ Rots=GB_GrainRot(Lattice,Basis,Species,Masses,Axis,Direction,Rot1_Options);
 GBorientations=GB_Orientations(Rots);
 
 Const_Options.Angle_Range=[36.8 36.9];
+Const_Options.Verbose=false;
+GB_Construct(GBorientations,Const_Options)
+
+
+%% Example 1b: Simplest BCC Metal Test
+
+clear;clc;close all
+
+Lattice=[1 0 0  
+         0 1 0
+         0 0 1]*2.86;
+
+Basis=[1 0.0 0.0 0.0 
+       1 0.5 0.5 0.5];        
+
+Species={'Fe'};
+Masses=[55.845];  
+Axis=[0 0 1];
+Direction='tilt';
+
+Rot1_Options.MaxMiller=5;
+
+Rots=GB_GrainRot(Lattice,Basis,Species,Masses,Axis,Direction,Rot1_Options);
+
+GBorientations=GB_Orientations(Rots);
+Const_Options.nGBs=1;
+Const_Options.NormSlabDim=100;
+Const_Options.Vacuum=40;
+Const_Options.GBregion=20;
+Const_Options.GBSort='Area';
+
 Const_Options.Verbose=false;
 GB_Construct(GBorientations,Const_Options)
 
