@@ -1,0 +1,397 @@
+variable Name string b4c_0.001_150_orig
+
+log ${Name}.log
+#################################################################
+# --------------------  Initialize Variables ------------------ #
+#################################################################
+
+
+##################### Deformation Variables  ####################
+# Define the finite deformation size (LExpand) and the number of iterations 
+# (NSteps) taken to achieve the deformation.  Try several values of these
+# variable to verify that results do not depend on it.
+
+variable     LExpand       equal    0.001  
+variable     NSteps        equal    150
+
+######################### Define Units ##########################
+# Uncomment one of these blocks, depending on what units
+# you are using in LAMMPS and for output
+
+# metal units, elastic constants in eV/A^3
+#units		   metal
+#variable      cfac        equal 6.2414e-7
+#variable      cunits      string eV/A^3
+
+# metal units, elastic constants in GPa
+#units		  metal
+#variable     cfac         equal 1.0e-4
+#variable     cunits       string GPa
+
+# real units, elastic constants in GPa
+units		 real
+variable     cfac         equal 1.01325e-4
+variable     cunits       string GPa
+
+######################## Setup Structure ########################
+
+boundary      p p p
+atom_style    charge
+read_data     B11Cp_CBC_triclinic_3x3x3_FinalMin.data
+
+#EXAMPLE PROBLEM:
+#variable a equal 5.43
+#boundary        p p p
+#lattice         diamond $a
+#region          box prism 0 2.0 0 3.0 0 4.0 0.0 0.0 0.0
+#create_box      1 box
+#create_atoms    1 box
+#mass 1 1.0e-20
+
+################# Define Minimization Parameters #################
+
+variable     MinStyle      string   "cg"
+variable     etol          equal    0.0
+variable     ftol          equal    1.0e-10
+variable     maxiter       equal    200
+variable     maxeval       equal    2000
+variable     dmax          equal    1.0e-2
+
+# This prevents atoms from staying on saddle points
+variable    atomjiggle     equal   0
+
+###################### Reporting Options #########################
+
+variable     NThermo       equal   1
+variable     ThermoStyle   string "step temp pe press pxx pyy pzz pxy pxz pyz lx ly lz vol"
+
+variable     DumpFilesBool equal   0
+variable     OptDumpData   string ""
+
+
+#################################################################
+# ---------------------------  Readme ------------------------- #
+#################################################################
+#
+# Compute elastic constant tensor for a crystal
+#
+# Written by Aidan Thompson (Sandia, athomps@sandia.gov)
+# Modified by Shawn Coleman (ARL, scolema3@gmail.com)
+#
+#  This script uses the following two include files.
+#
+#
+#   Coleman_potential.mod    (must be modified for different pair styles)
+# 		     Define pair style and other attributes 
+#		     not stored in restart file
+#
+#
+#   Coleman_displace.mod    (Coleman_displace.mod should not need to be modified)
+# 		    Perform positive and negative box displacements 
+# 		    in direction ${dir} and size ${up}. 
+# 		    It uses the resultant changes 
+#		    in stress to compute one
+# 		    row of the elastic stiffness tensor
+#		    
+#		    Inputs variables:
+#		    	   dir = the Voigt deformation component 
+#		    		    (1,2,3,4,5,6)  
+#		    Global constants:
+#       	    	   up = the deformation magnitude (strain units)
+#       		   cfac = conversion from LAMMPS pressure units to 
+#               	   output units for elastic constants 
+#
+#
+#  To run this on a different system, it should only be necessary to 
+#  modify the files Coleman_init.mod and Coleman_potential.mod. In order to calculate
+#  the elastic constants correctly, care must be taken to specify
+#  the correct units in Coleman_init.mod (units, cfac and cunits). It is also
+#  important to verify that the minimization of energy w.r.t atom
+#  positions in the deformed cell is fully converged.
+#  One indication of this is that the elastic constants are insensitive
+#  to the choice of the variable ${up} in Coleman_init.mod. Another is to check
+#  the final max and two-norm forces reported in the log file. If you know
+#  that minimization is not required, you can set maxiter = 0.0 in 
+#  Coleman_init.mod. 
+
+
+#################################################################
+# ------------  Initial Minimization of Structure ------------- #
+#################################################################
+include Coleman_potential.mod
+
+fix 3 all box/relax  tri 0.0
+minimize ${etol} ${ftol} ${maxiter} ${maxeval}
+
+variable tmp1 equal pxx*${cfac}
+variable pxx0 equal ${tmp1}
+variable tmp2 equal pyy*${cfac}
+variable pyy0 equal ${tmp2}
+variable tmp3 equal pzz*${cfac}
+variable pzz0 equal ${tmp3}
+variable tmp4 equal pyz*${cfac}
+variable pyz0 equal ${tmp4}
+variable tmp5 equal pxz*${cfac}
+variable pxz0 equal ${tmp5}
+variable tmp6 equal pxy*${cfac}
+variable pxy0 equal ${tmp6}
+
+variable tmp equal lx
+variable lx0 equal ${tmp}
+variable tmp equal ly
+variable ly0 equal ${tmp}
+variable tmp equal lz
+variable lz0 equal ${tmp}
+variable tmp equal xy
+variable xy0 equal ${tmp}
+variable tmp equal xz
+variable xz0 equal ${tmp}
+variable tmp equal yz
+variable yz0 equal ${tmp}
+
+displace_atoms all random ${atomjiggle} ${atomjiggle} ${atomjiggle} 87287 units box
+
+# Write restart
+unfix 3
+write_restart ${Name}_restart.equil
+
+#################################################################
+# ----------  Start Deformations in Each Direction ------------ #
+#################################################################
+
+print "% Elastic constant data for ${Name}" append ${Name}.m  
+print "% Pressure values recoreded in ${cunits}" append ${Name}.m 
+
+####################### uxx Perturbation ########################
+
+print "% uxx Perturbation" append ${Name}.m 
+variable dir equal 1
+include Coleman_displace.mod
+
+####################### uyy Perturbation ########################
+
+print "% uyy Perturbation" append ${Name}.m 
+variable dir equal 2
+include Coleman_displace.mod
+
+####################### uzz Perturbation ########################
+
+print "% uzz Perturbation" append ${Name}.m 
+variable dir equal 3
+include Coleman_displace.mod
+
+####################### uyz Perturbation ########################
+
+print "% uyz Perturbation" append ${Name}.m 
+variable dir equal 4
+include Coleman_displace.mod
+
+####################### uxz Perturbation ########################
+
+print "% uxz Perturbation" append ${Name}.m 
+variable dir equal 5
+include Coleman_displace.mod
+
+####################### uxy Perturbation ########################
+
+print "% uxy Perturbation" append ${Name}.m 
+variable dir equal 6
+include Coleman_displace.mod
+
+#################################################################
+# -------------  Output Elastic Constant Data ----------------- #
+#################################################################
+
+
+################## Using All Deformation Data ###################
+
+variable C11all equal ${C11}
+variable C22all equal ${C22}
+variable C33all equal ${C33}
+
+variable C12all equal 0.5*(${C12}+${C21})
+variable C13all equal 0.5*(${C13}+${C31})
+variable C23all equal 0.5*(${C23}+${C32})
+
+variable C44all equal ${C44}
+variable C55all equal ${C55}
+variable C66all equal ${C66}
+
+variable C14all equal 0.5*(${C14}+${C41})
+variable C15all equal 0.5*(${C15}+${C51})
+variable C16all equal 0.5*(${C16}+${C61})
+
+variable C24all equal 0.5*(${C24}+${C42})
+variable C25all equal 0.5*(${C25}+${C52})
+variable C26all equal 0.5*(${C26}+${C62})
+
+variable C34all equal 0.5*(${C34}+${C43})
+variable C35all equal 0.5*(${C35}+${C53})
+variable C36all equal 0.5*(${C36}+${C63})
+
+variable C45all equal 0.5*(${C45}+${C54})
+variable C46all equal 0.5*(${C46}+${C64})
+variable C56all equal 0.5*(${C56}+${C65})
+
+
+print "=========================================" append ${Name}_const.dat
+print "Components of the Elastic Constant Tensor" append ${Name}_const.dat
+print "         Using All Deformation Data      " append ${Name}_const.dat
+print "=========================================" append ${Name}_const.dat
+
+print "Elastic Constant C11all = ${C11all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C22all = ${C22all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C33all = ${C33all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C12all = ${C12all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C13all = ${C13all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C23all = ${C23all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C44all = ${C44all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C55all = ${C55all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C66all = ${C66all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C14all = ${C14all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C15all = ${C15all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C16all = ${C16all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C24all = ${C24all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C25all = ${C25all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C26all = ${C26all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C34all = ${C34all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C35all = ${C35all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C36all = ${C36all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C45all = ${C45all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C46all = ${C46all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C56all = ${C56all} ${cunits}" append ${Name}_const.dat
+
+
+############### Using Unlaoding Deformation Data ################
+
+variable C11all equal ${UC11}
+variable C22all equal ${UC22}
+variable C33all equal ${UC33}
+
+variable C12all equal 0.5*(${UC12}+${UC21})
+variable C13all equal 0.5*(${UC13}+${UC31})
+variable C23all equal 0.5*(${UC23}+${UC32})
+
+variable C44all equal ${UC44}
+variable C55all equal ${UC55}
+variable C66all equal ${UC66}
+
+variable C14all equal 0.5*(${UC14}+${UC41})
+variable C15all equal 0.5*(${UC15}+${UC51})
+variable C16all equal 0.5*(${UC16}+${UC61})
+
+variable C24all equal 0.5*(${UC24}+${UC42})
+variable C25all equal 0.5*(${UC25}+${UC52})
+variable C26all equal 0.5*(${UC26}+${UC62})
+
+variable C34all equal 0.5*(${UC34}+${UC43})
+variable C35all equal 0.5*(${UC35}+${UC53})
+variable C36all equal 0.5*(${C36}+${UC63})
+
+variable C45all equal 0.5*(${UC45}+${UC54})
+variable C46all equal 0.5*(${UC46}+${UC64})
+variable C56all equal 0.5*(${UC56}+${UC65})
+
+print "=========================================" append ${Name}_const.dat
+print "        Using Unloading Data Only        " append ${Name}_const.dat
+print "Components of the Elastic Constant Tensor" append ${Name}_const.dat
+print "=========================================" append ${Name}_const.dat
+
+print "Elastic Constant C11all = ${C11all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C22all = ${C22all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C33all = ${C33all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C12all = ${C12all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C13all = ${C13all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C23all = ${C23all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C44all = ${C44all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C55all = ${C55all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C66all = ${C66all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C14all = ${C14all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C15all = ${C15all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C16all = ${C16all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C24all = ${C24all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C25all = ${C25all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C26all = ${C26all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C34all = ${C34all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C35all = ${C35all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C36all = ${C36all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C45all = ${C45all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C46all = ${C46all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C56all = ${C56all} ${cunits}" append ${Name}_const.dat
+
+
+################ Using Laoding Deformation Data #################
+
+variable C11all equal ${LC11}
+variable C22all equal ${LC22}
+variable C33all equal ${LC33}
+
+variable C12all equal 0.5*(${LC12}+${LC21})
+variable C13all equal 0.5*(${LC13}+${LC31})
+variable C23all equal 0.5*(${LC23}+${LC32})
+
+variable C44all equal ${LC44}
+variable C55all equal ${LC55}
+variable C66all equal ${LC66}
+
+variable C14all equal 0.5*(${LC14}+${LC41})
+variable C15all equal 0.5*(${LC15}+${LC51})
+variable C16all equal 0.5*(${LC16}+${LC61})
+
+variable C24all equal 0.5*(${LC24}+${LC42})
+variable C25all equal 0.5*(${LC25}+${LC52})
+variable C26all equal 0.5*(${LC26}+${LC62})
+
+variable C34all equal 0.5*(${LC34}+${LC43})
+variable C35all equal 0.5*(${LC35}+${LC53})
+variable C36all equal 0.5*(${C36}+${LC63})
+
+variable C45all equal 0.5*(${LC45}+${LC54})
+variable C46all equal 0.5*(${LC46}+${LC64})
+variable C56all equal 0.5*(${LC56}+${LC65})
+
+print "=========================================" append ${Name}_const.dat
+print "        Using loading Data Only          " append ${Name}_const.dat
+print "Components of the Elastic Constant Tensor" append ${Name}_const.dat
+print "=========================================" append ${Name}_const.dat
+
+print "Elastic Constant C11all = ${C11all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C22all = ${C22all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C33all = ${C33all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C12all = ${C12all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C13all = ${C13all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C23all = ${C23all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C44all = ${C44all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C55all = ${C55all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C66all = ${C66all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C14all = ${C14all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C15all = ${C15all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C16all = ${C16all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C24all = ${C24all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C25all = ${C25all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C26all = ${C26all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C34all = ${C34all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C35all = ${C35all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C36all = ${C36all} ${cunits}" append ${Name}_const.dat
+
+print "Elastic Constant C45all = ${C45all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C46all = ${C46all} ${cunits}" append ${Name}_const.dat
+print "Elastic Constant C56all = ${C56all} ${cunits}" append ${Name}_const.dat
+
