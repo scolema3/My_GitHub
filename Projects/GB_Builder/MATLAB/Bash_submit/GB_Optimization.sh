@@ -2,7 +2,7 @@
 # Script to run GB translation/overlap optimization using data  
 # files created by MATLAB script
 
-Version=0.037
+Version=0.040
 
 help_ani()
 {
@@ -40,6 +40,8 @@ help_ani()
         nMPI=12
         LAMMPS=lmp_kim
         MPIrun=\"mpirun -np\"
+        
+        Interact=0      (Prompts user -- Interact=0 if submitting to queue)
 
         # Minimization
         etol=1e-20
@@ -52,6 +54,9 @@ help_ani()
         Nz=1            (Number of z-translations)
         Noverlap=1      (Number of overlap distances)
         DeleteRegion=1  (1-upper 2-lower region for deletion)
+        IdRestart=0     (Allows optimization loops to be restarted if 
+                         not completed IdRestart=0 starts from begining)
+        
 
         # LAMMPS Style
         Units=metal
@@ -104,6 +109,8 @@ nMPI=12
 LAMMPS=lmp_kim
 MPIrun="mpirun -np"
 
+Interact=1
+
 # GB file names
 Find_Prefix=
 Find_Suffix=.data
@@ -119,6 +126,10 @@ Nx=1
 Nz=1
 Noverlap=1
 DeleteRegion=1
+
+# Restart Info
+IdRestart=0
+PrevNAtom=0
 
 # Style
 Units=metal
@@ -213,12 +224,11 @@ Index=${Index#*$Bulk_Prefix}
 
 # Test if previously computed bulk properties and ask to reuse
 NBulkDat=`ls -l ${Work_Dir}/$Bulk_Dir/${Bulk_Name}${Index}.dat 2>/dev/null | wc -l`
-if [ $NBulkDat -eq "1" ]; then 
+if [[  $NBulkDat -eq "1"  && $Interact -eq "1" ]]; then 
   echo " "
   echo " Bulk minimization already completed. "
   echo -n " Would you like to reuse this data? Type (yes/no) and press [ENTER]: "
   read yno
-    
   case $yno in
     [yY] | [yY][Ee][Ss] )
       echo " Reusing computed values..."; CompBulk=0 ;;
@@ -260,7 +270,7 @@ log ${Bulk_Name}${Index}.log
 
 #################################################################
 #    LAMMPS Input File for Grain Boundary Optimization
-#    Shawn P. Coleman, July 2015
+#    Shawn P. Coleman, July 2016
 #################################################################
 
 #################################################################
@@ -364,13 +374,33 @@ echo " -- Looping over $NGBs Structures " >> Progress.txt
 echo " " >> Progress.txt
 
 
+# If restarting optimization loop, determining initial translation/deletion points
+
+Niter=$((${Nx}*${Nz}*${Noverlap}*${DeleteRegion}))
+
+if [[ ${DeletRegion} -eq "2" && ${IdRestart} -gt $(($Niter/2)) ]]; then 
+    d1=2
+else
+    d1=1
+fi
+
+c1=`expr ${IdRestart} % ${Noverlap}`
+b1=(`expr ${IdRestart} % $((${Noverlap}*${Nz}))`)
+b1=$(( (${b1}-${c1}) / ${Noverlap} ))
+a1=$(( (${IdRestart}-${b1}*${Noverlap}-${c1})/(${Noverlap}*${Nz}) ))
+
+a1=$(($a1+1))
+b1=$(($b1+1))
+c1=$(($c1+1))
+
+
 # Creating LAMMPS master script that will be used for each GB ##
 cat > $Work_Dir/master_gb.in << _EOF_
 log SED_NAME_SED.log
 
 #################################################################
 #    LAMMPS Input File for Grain Boundary Optimization
-#    Shawn P. Coleman, July 2015
+#    Shawn P. Coleman, July 2016
 #################################################################
 
 #################################################################
@@ -397,8 +427,13 @@ variable     Doverlap      equal    (\${0verlapStop}-\${OverlapStart})/${Noverla
 # --------------- Define loops for simulation ----------------- #
 #################################################################
 
-variable     counter      equal    0 
-variable     atomprev     equal    0
+print "debug 0"
+variable     counter      equal    ${IdRestart}
+variable     a1           equal    ${a1}
+variable     b1           equal    ${b1}
+variable     c1           equal    ${c1}
+variable     d1           equal    ${d1}
+variable     atomprev     equal    ${PrevNAtom}
 variable     optdx        equal    0
 variable     optdz        equal    0
 variable     optoverlap   equal    0
@@ -406,33 +441,34 @@ variable     optnatoms    equal    0
 variable     gbeprev      equal    100000000
 variable     gbeRprev     equal    100000000
 
-print        "Count dx dz overlapdist natoms gbe" file \${Name}.dat
+print "debug 1"
+print        "Count dx dz overlapdist natoms gbe" append \${Name}.dat
+
+## Delete Region (upper/lower, 1/2) 
+label        loopd
+variable     d            loop     \${d1} ${DeleteRegion} 
 
 ## x-Translations 
 label        loopa 
-variable     a            loop     ${Nx} 
+variable     a            loop     \${a1} ${Nx} 
 variable     tx           equal    (\${a}-1)*\${Dx}
  
 ## z-Translations  
 label        loopb 
-variable     b            loop     ${Nz} 
+variable     b            loop     \${b1} ${Nz} 
 variable     tz           equal    (\${b}-1)*\${Dz}
-
-## Delete Region (upper/lower, 1/2) 
-label        loopd
-variable     d            loop     ${DeleteRegion} 
 
 ## Overlap Distances
 label        loopc 
-variable     c           loop     ${Noverlap} 
-variable     OverlapDist equal    0+\${Doverlap}*(\${c}-1) 
+variable     c            loop     \${c1} ${Noverlap} 
+variable     OverlapDist equal     0+\${Doverlap}*(\${c}-1) 
 
 
-variable      counter     equal    \${counter}+1 
 #################################################################
 # ------------------- Initialize simulation ------------------- #
 #################################################################
 clear
+variable        counter     equal    \${counter}+1 
 print          "Counter: \${counter}" 
 print          "Overlap Distance: \${OverlapDist}"
 
@@ -526,18 +562,27 @@ variable        atomprev     equal  \${natoms}
 #################################################################
 # ----------------- Close loops for simulation ---------------- #
 #################################################################
+
 label           loopend 
 next            c 
 jump            SED_NAME_SED.in loopc 
 variable        c delete 
+variable        c0 equal 1
+
+next            b 
+jump            SED_NAME_SED.in loopb 
+variable        b delete
+variable        b0 equal 1
+
+next            a 
+jump            SED_NAME_SED.in loopa 
+variable        a delete
+variable        a0 equal 1
+
 next            d 
 jump            SED_NAME_SED.in loopd 
 variable        d delete 
-next            b 
-jump            SED_NAME_SED.in loopb 
-variable        b delete 
-next            a 
-jump            SED_NAME_SED.in loopa 
+
 
 print          'Optimal: \${optdx} \${optdz} \${optoverlap} \${optnatoms} \${gbeRprev} \${gbeprev}'
 print          "All done"
