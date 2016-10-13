@@ -1,6 +1,6 @@
 #!/bin/sh
 
-Version=0.04
+Version=0.05
 
 # help guide
 help_ani()
@@ -115,6 +115,7 @@ for element in \${MakefileList[@]}; do
         cp   lmp_\${Makefile} ~/bin/lmp_versions/lmp_diff_${now}_v\${version}
     fi
 done
+chmod 755 -R ~/Public/bin/
 
 _EOF_
 

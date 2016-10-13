@@ -1,0 +1,422 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<calculation-grain-boundary>
+    <key>HERE_CALCULATION_KEY_HERE</key>
+    <id>grain_boundary_energy_structure</id>
+    <description>Grain boundary energy and structure record for a specific fcc tilt grain boundary generated using molecular statics energy minimization (LAMMPS) with in-plane grain boundary translations and an atom deletion criterion. </description>
+
+    <contributor>
+        <name>Mark A. Tschopp</name>
+        <identifier>
+            <id>http://orcid.org/0000-0001-8471-5035</id>
+            <type>orcid</type>
+        </identifier>
+        <email>mark.a.tschopp.civ@mail.mil</email>
+        <affiliation>U.S. Army Research Laboratory</affiliation>
+    </contributor>
+    <contributor>
+        <name>Shawn P. Coleman</name>
+        <identifier>
+            <id>http://orcid.org/0000-0002-5542-3161</id>
+            <type>orcid</type>
+        </identifier>
+        <email>shawn.p.coleman8.civ@mail.mil</email>
+        <affiliation>U.S. Army Research Laboratory</affiliation>
+    </contributor>
+    <contributor>
+        <name>David L. McDowell</name>
+        <email>david.mcdowell@me.gatech.edu</email>
+        <affiliation>Georgia Institute of Technology</affiliation>
+    </contributor>
+
+    <potential>
+        <key>28db68db-ef9b-4453-b631-34fa793f779f</key>
+        <id>1999--Mishin-Y--Al-1</id>
+        <implementation>
+            <id>1</id>
+        </implementation>
+        <artifact>
+            <web-link>
+                <URL>http://www.ctcms.nist.gov/potentials/Download/Al-YM/Al99.eam.alloy</URL>
+            </web-link>
+        </artifact>
+        <doi>10.1103/PhysRevB.59.3393 </doi>
+        <element>Al</element>
+    </potential>
+
+    <atomistic-method>
+        <key>e7d587be-2917-467e-b6eb-ef754640a539</key>
+        <id>GB_translation_cutoff_optimization</id>
+        <description>LAMMPS scripts that contruct (fcc/bcc) grain boundaries and perform a brute force search to find the lowest energy grain boundary structure using systematic grain translationations and atom deletion. The translataions relax the structure in the grain boundary plane while the atom deletion help to optimize the structure in the grain boundary normal directions.</description>
+        <comment>flat bicrystal</comment>
+        <comment>energy minimization</comment>
+        <comment>optimization</comment>
+        <comment>translation</comment>
+        <comment>cutoff</comment>
+
+        <type>molecular statics</type>
+
+        <citation>
+            <DOI>10.1186/s40192-015-0040-1</DOI>
+            <URL>https://immijournal.springeropen.com/articles/10.1186/s40192-015-0040-1</URL>
+        </citation>
+
+        <parameter>
+            <value>0.275</value>
+            <unit>angstrom</unit>
+            <name>cutoff_start</name>
+        </parameter>
+        <parameter>
+            <value>0.005</value>
+            <unit>angstrom</unit>
+            <name>cutoff_increment</name>
+        </parameter>
+
+        <parameter>
+            <value>1.0e-25</value>
+            <unit>eV</unit>
+            <name>etol</name>
+        </parameter>
+        <parameter>
+            <value>1.0e-25</value>
+            <unit>eV/angstrom</unit>
+            <name>ftol</name>
+        </parameter>
+        <parameter>
+            <value>5000</value>
+            <unit>iteration</unit>
+            <name>maxiter</name>
+        </parameter>
+        <parameter>
+            <value>10000</value>
+            <unit>iteration</unit>
+            <name>maxeval</name>
+        </parameter>
+
+        <code>
+            <key>b24942e2-857b-49cc-93c9-17c6ad3604bd</key>
+            <id>lammps_15May2015</id>
+            <name>LAMMPS</name>
+            <description>Stock LAMMPS Molecular Dynamics Simulator (lammps.sandia.gov).</description>
+            <version>15May2015</version>
+            <date>2015-05-15</date>
+        </code>
+
+        <supporting-file>
+            <name>cubic_grain_boundary_generation</name>
+            <description>Zipped folder containing example scripts for generating and optimizing cubic (fcc/bcc) grain boundaries using LAMMPS.</description>
+            <type>zip</type>
+            <comment>scripts</comment>
+            <comment>examples</comment>
+            <comment>instructions</comment>
+            <downloadURL>https://mdcs1.nist.gov/rest/blob?id=57f24832951166227841e5c3</downloadURL>
+        </supporting-file>
+
+    </atomistic-method>
+
+
+    <process>
+        <key>f9219a47-ba9c-4bfa-b39b-a618e5ebf824</key>
+        <id>Grain_Boundary_Energy_2A</id>
+        <name>Grain Boundary Energy Calculation</name>
+        <description>Grain boundary energy is calculated as the energy of the system containing the grain boundaries minus the energy of the bulk material in each grain (adjusted for the number of atoms) divided by twice the area of the grain boundary to account for the two grain boundaries present due to periodic boundary conditions.</description>
+        <comment>(E_GB-n_1*E_1*n_2*E_2)/(2*A)</comment>
+    </process>
+
+
+    <bicrystal>
+        <key>HERE_GB_KEY_HERE</key>
+        <id>HERE_GB_NAME_HERE</id>
+        <dimension>
+            <x>
+                <value>HERE_XDIM_HERE</value>
+                <unit>angstrom</unit>
+            </x>
+            <y>
+                <value>HERE_YDIM_HERE</value>
+                <unit>angstrom</unit>
+            </y>
+            <z>
+                <value>HERE_ZDIM_HERE</value>
+                <unit>angstrom</unit>
+            </z>
+        </dimension>
+
+        <periodicity>
+            <x>true</x>
+            <y>true</y>
+            <z>true</z>
+        </periodicity>
+
+        <number-of-atoms>HERE_N_ATOMS_TOTAL_HERE</number-of-atoms>
+
+        <comment>equilibrium structure</comment>
+
+        <grain-boundary>
+            <normal>
+                <value>0</value>
+                <value>1</value>
+                <value>0</value>
+                <unit>box-hkl</unit>
+            </normal>
+            <area>
+                <value>HERE_GB_AREA_HERE</value>
+                <unit>angstrom^2</unit>
+            </area>
+        </grain-boundary>
+
+        <grain>
+            <key>HERE_GRAIN1_KEY_HERE</key>
+            <id>grain1</id>
+            <description>bottom grain</description>
+
+            <crystal-prototype>
+                <key>ebed3846-7c40-4bfa-999d-7ac868c53e46</key>
+                <id>face-centered cubic</id>
+                <name>fcc</name>
+                <prototype>Cu</prototype>
+                <Pearson-symbol>cF4</Pearson-symbol>
+                <Strukturbericht>A1</Strukturbericht>
+                <space-group>
+                    <number>225</number>
+                    <Hermann-Maguin>F m -3 m</Hermann-Maguin>
+                    <Schoenflies>O^5_h</Schoenflies>
+                    <Wykoff>
+                        <letter>a</letter>
+                        <multiplicity>4</multiplicity>
+                    </Wykoff>
+                    <Wykoff>
+                        <letter>b</letter>
+                        <multiplicity>4</multiplicity>
+                    </Wykoff>
+                    <Wykoff>
+                        <letter>c</letter>
+                        <multiplicity>8</multiplicity>
+                    </Wykoff>
+                </space-group>
+
+                <atomic-system>
+                    <cell>
+                        <cubic>
+                            <a>
+                                <value>1.0</value>
+                                <unit>scaled</unit>
+                            </a>
+                        </cubic>
+                    </cell>
+                    <atom>
+                        <component>1</component>
+                        <position>
+                            <value>0.0</value>
+                            <value>0.0</value>
+                            <value>0.0</value>
+                            <unit>scaled</unit>
+                        </position>
+                    </atom>
+                    <atom>
+                        <component>1</component>
+                        <position>
+                            <value>0.0</value>
+                            <value>0.5</value>
+                            <value>0.5</value>
+                            <unit>scaled</unit>
+                        </position>
+                    </atom>
+                    <atom>
+                        <component>1</component>
+                        <position>
+                            <value>0.5</value>
+                            <value>0.0</value>
+                            <value>0.5</value>
+                            <unit>scaled</unit>
+                        </position>
+                    </atom>
+                    <atom>
+                        <component>1</component>
+                        <position>
+                            <value>0.5</value>
+                            <value>0.5</value>
+                            <value>0.0</value>
+                            <unit>scaled</unit>
+                        </position>
+                    </atom>
+                </atomic-system>
+            </crystal-prototype>
+
+            <orientation>
+                <x>
+                    <h>HERE_ORIENT1_X1_HERE</h>
+                    <k>HERE_ORIENT1_X2_HERE</k>
+                    <l>HERE_ORIENT1_X3_HERE</l>
+                </x>
+                <y>
+                    <h>HERE_ORIENT1_Y1_HERE</h>
+                    <k>HERE_ORIENT1_Y2_HERE</k>
+                    <l>HERE_ORIENT1_Y3_HERE</l>
+                </y>
+                <z>
+                    <h>HERE_ORIENT1_Z1_HERE</h>
+                    <k>HERE_ORIENT1_Z2_HERE</k>
+                    <l>HERE_ORIENT1_Z3_HERE</l>
+                </z>
+            </orientation>
+
+            <center-of-mass-position>
+                <value>HERE_COM_X_HERE</value>
+                <value>HERE_COM1_Y_HERE</value>
+                <value>HERE_COM_Z_HERE</value>
+                <unit>angstrom</unit>
+            </center-of-mass-position>
+
+            <strain>
+                <value>0.0</value>
+                <value>0.0</value>
+                <value>0.0</value>
+                <unit>percent</unit>
+            </strain>
+        </grain>
+
+
+
+        <grain>
+            <key>HERE_GRAIN2_KEY_HERE</key>
+            <id>grain2</id>
+            <description>top grain</description>
+
+            <crystal-prototype>
+                <key>ebed3846-7c40-4bfa-999d-7ac868c53e46</key>
+                <id>face-centered cubic</id>
+                <name>fcc</name>
+                <prototype>Cu</prototype>
+                <Pearson-symbol>cF4</Pearson-symbol>
+                <Strukturbericht>A1</Strukturbericht>
+                <space-group>
+                    <number>225</number>
+                    <Hermann-Maguin>F m -3 m</Hermann-Maguin>
+                    <Schoenflies>O^5_h</Schoenflies>
+                    <Wykoff>
+                        <letter>a</letter>
+                        <multiplicity>4</multiplicity>
+                    </Wykoff>
+                    <Wykoff>
+                        <letter>b</letter>
+                        <multiplicity>4</multiplicity>
+                    </Wykoff>
+                    <Wykoff>
+                        <letter>c</letter>
+                        <multiplicity>8</multiplicity>
+                    </Wykoff>
+                </space-group>
+
+                <atomic-system>
+                    <cell>
+                        <cubic>
+                            <a>
+                                <value>1.0</value>
+                                <unit>scaled</unit>
+                            </a>
+                        </cubic>
+                    </cell>
+                    <atom>
+                        <component>1</component>
+                        <position>
+                            <value>0.0</value>
+                            <value>0.0</value>
+                            <value>0.0</value>
+                            <unit>scaled</unit>
+                        </position>
+                    </atom>
+                    <atom>
+                        <component>1</component>
+                        <position>
+                            <value>0.0</value>
+                            <value>0.5</value>
+                            <value>0.5</value>
+                            <unit>scaled</unit>
+                        </position>
+                    </atom>
+                    <atom>
+                        <component>1</component>
+                        <position>
+                            <value>0.5</value>
+                            <value>0.0</value>
+                            <value>0.5</value>
+                            <unit>scaled</unit>
+                        </position>
+                    </atom>
+                    <atom>
+                        <component>1</component>
+                        <position>
+                            <value>0.5</value>
+                            <value>0.5</value>
+                            <value>0.0</value>
+                            <unit>scaled</unit>
+                        </position>
+                    </atom>
+                </atomic-system>
+            </crystal-prototype>
+
+            <orientation>
+                <x>
+                    <h>HERE_ORIENT2_X1_HERE</h>
+                    <k>HERE_ORIENT2_X2_HERE</k>
+                    <l>HERE_ORIENT2_X3_HERE</l>
+                </x>
+                <y>
+                    <h>HERE_ORIENT2_Y1_HERE</h>
+                    <k>HERE_ORIENT2_Y2_HERE</k>
+                    <l>HERE_ORIENT2_Y3_HERE</l>
+                </y>
+                <z>
+                    <h>HERE_ORIENT2_Z1_HERE</h>
+                    <k>HERE_ORIENT2_Z2_HERE</k>
+                    <l>HERE_ORIENT2_Z3_HERE</l>
+                </z>
+            </orientation>
+
+            <center-of-mass-position>
+                <value>HERE_COM_X_HERE</value>
+                <value>HERE_COM2_Y_HERE</value>
+                <value>HERE_COM_Z_HERE</value>
+                <unit>angstrom</unit>
+            </center-of-mass-position>
+
+            <strain>
+                <value>0.0</value>
+                <value>0.0</value>
+                <value>0.0</value>
+                <unit>percent</unit>
+            </strain>
+        </grain>
+
+        <misorientation>
+            <value>HERE_MISORIENTATION_ANGLE_HERE</value>
+            <unit>degree</unit>
+        </misorientation>
+
+        <sigma-value>HERE_SIGMA_HERE</sigma-value>
+
+    </bicrystal>
+
+    <temperature>
+        <value>0.0</value>
+        <unit>kelvin</unit>
+    </temperature>
+
+    <grain-boundary-energy>
+        <value>HERE_GBE_HERE</value>
+        <unit>mJ/m^2</unit>
+    </grain-boundary-energy>
+
+
+    <supporting-file>
+        <name>HERE_GB_NAME_HERE_structure</name>
+        <description>LAMMPS datafile containing the equilibirum grain boundary for HERE_GB_NAME_HERE.</description>
+        <type>datafile</type>
+        <comment>LAMMPS</comment>
+        <comment>equilibrium </comment>
+        <comment>structure</comment>
+        <comment>grain boundary</comment>
+        <downloadURL>HERE_GBSTRUCTURE_BLOB_HERE</downloadURL>
+    </supporting-file>
+
+</calculation-grain-boundary>

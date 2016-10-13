@@ -7,16 +7,16 @@ clear;clc;close all
 
 Lattice=[1 0 0  
          0 1 0
-         0 0 1]*4.05;
+         0 0 1]*3.6150;
 
 Basis=[1 0.0 0.0 0.0 
        1 0.5 0.5 0.0
        1 0.0 0.5 0.5
        1 0.5 0.0 0.5];        
 
-Species={'Al'};
+Species={'Cu'};
 Masses=[26.9815];  
-Axis=[0 0 1];
+Axis=[0 1 1];
 Direction='tilt';
 
 Rot1_Options.MaxMiller=5;
@@ -25,8 +25,8 @@ Rots=GB_GrainRot(Lattice,Basis,Species,Masses,Axis,Direction,Rot1_Options);
 
 
 GBorientations=GB_Orientations(Rots);
-
-Const_Options.Angle_Range=[36.8 36.9];
+Const_Options.nGBs=1;
+Const_Options.Angle_Range=[10 20];
 Const_Options.Verbose=false;
 GB_Construct(GBorientations,Const_Options)
 
@@ -37,7 +37,7 @@ clear;clc;close all
 
 Lattice=[1 0 0  
          0 1 0
-         0 0 1]*2.86;
+         0 0 1]*2.855;
 
 Basis=[1 0.0 0.0 0.0 
        1 0.5 0.5 0.5];        
@@ -47,18 +47,19 @@ Masses=[55.845];
 Axis=[0 0 1];
 Direction='tilt';
 
-Rot1_Options.MaxMiller=5;
+% Rot1_Options.Symmetry=true;
+Rot1_Options.MaxMiller=3;
 
 Rots=GB_GrainRot(Lattice,Basis,Species,Masses,Axis,Direction,Rot1_Options);
 
 GBorientations=GB_Orientations(Rots);
-Const_Options.nGBs=1;
-Const_Options.NormSlabDim=100;
+Const_Options.nGBs=10;
+Const_Options.NormSlabDim=[100 200];
 Const_Options.Vacuum=40;
 Const_Options.GBregion=20;
 Const_Options.GBSort='Area';
 
-Const_Options.Verbose=false;
+Const_Options.Verbose=true;
 GB_Construct(GBorientations,Const_Options)
 
 
@@ -125,7 +126,7 @@ GB=GB_Orientations(GrainRot1,GrainRot2,Orient_Options);
 Const_Options.GBSort='Area';
 Const_Options.nGBs=4;
 Const_Options.WriteStyle={'dump', 'data'};
-Const_Options.Overlap_tol=1;
+Const_Options.Overlap_Tol=1;
 Const_Options.NormSlabDim=20;
 Const_Options.Vacuum=20;
 Const_Options.GBregion=10;
@@ -231,7 +232,7 @@ GB=GB_Orientations(GrainRot,GrainRot,Orient_Options);
 Const_Options.GBSort='Area';
 Const_Options.nGBs=1;
 Const_Options.WriteStyle={'dump', 'data'};
-Const_Options.Overlap_tol=1;
+Const_Options.Overlap_Tol=1;
 Const_Options.NormSlabDim=[20 20];
 Const_Options.Vacuum=20;
 Const_Options.GBregion=10;
@@ -295,15 +296,13 @@ Orient_Options.Verbose=true;
 
 GB=GB_Orientations(GrainRot,GrainRot,Orient_Options);
 
-%%
-clc
 Const_Options.Angle_Range=[46.9969 46.9971];
 Const_Options.AtomStyle='charge';
 
 Const_Options.GBSort='Area';
 Const_Options.nGBs=1;
 Const_Options.WriteStyle={'dump', 'data'};
-Const_Options.Overlap_tol=0;
+Const_Options.Overlap_Tol=0;
 Const_Options.NormSlabDim=[20 20];
 Const_Options.Vacuum=20;
 Const_Options.GBregion=10;
@@ -317,3 +316,106 @@ Const_Options.Stoich=true;
 Const_Options.ForceStoich=false;
 
 GB_Construct(GB,Const_Options)
+
+
+%% Hexagonal (HCP) Magnesium
+
+
+clear;clc;close all
+
+Lattice=[1       0           0  
+         0      sqrt(3)      0
+         0      0            sqrt(8/3)]*3.18;
+
+Basis=[1 0.0 0.0 0.0 
+       1 0.5 0.5 0.0
+       1 0.5 5/6 0.5
+       1 0.0 1/3 0.5
+       ];        
+
+Species={'Mg'};
+Masses=[24.305];  
+Axis=[0 0 1];
+Direction='x';
+
+
+Rot1_Options.MaxMiller=5;
+Rots1=GB_GrainRot(Lattice,Basis,Species,Masses,Axis,Direction,Rot1_Options);
+
+Direction='z';
+
+Rots2=GB_GrainRot(Lattice,Basis,Species,Masses,Axis,Direction,Rot1_Options);
+
+%%%%%%%%%%%%
+Orient_Options.Strain_Tol=0.1;
+Orient_Options.MaxArea=100000;
+Orient_Options.Verbose=true;
+
+GBorientations=GB_Orientations(Rots1,Rots2,Orient_Options);
+
+Const_Options.nGBs=15;
+Const_Options.WriteStyle={'dump', 'data'};
+Const_Options.Overlap_Tol=0;
+Const_Options.NormSlabDim=[150 150];
+Const_Options.Vacuum=20;
+Const_Options.GBregion=10;
+Const_Options.FullyPeriodic=false;
+Const_Options.Suffix='';
+Const_Options.Verbose=true;
+
+GB_Construct(GBorientations,Const_Options)
+
+%% FCC + BCC
+
+clear;clc;close all
+
+Lattice=[1 0 0  
+         0 1 0
+         0 0 1]*2.8553;
+
+Basis=[1 0.0 0.0 0.0 
+       1 0.5 0.5 0.5];        
+
+Species={'Fe'};
+Masses=[55.845];  
+Axis=[1 1 1];
+Direction='x';
+
+Rot1_Options.MaxMiller=2;
+Rots1=GB_GrainRot(Lattice,Basis,Species,Masses,Axis,Direction,Rot1_Options);
+
+
+Lattice=[1 0 0  
+         0 1 0
+         0 0 1]*3.6584;
+
+Basis=[1 0.0 0.0 0.0 
+        1 0.5 0.5 0.0
+        1 0.0 0.5 0.5
+        1 0.5 0.0 0.5]; 
+    
+Species={'Fe'};
+Masses=[55.845];  
+Axis=[1 1 0];
+Direction='x';
+
+Rot1_Options.MaxMiller=2;
+Rots2=GB_GrainRot(Lattice,Basis,Species,Masses,Axis,Direction,Rot1_Options);
+
+%%%%%%%%%%%%
+Orient_Options.Strain_Tol=0.001;
+Orient_Options.MaxArea=100000;
+Orient_Options.Verbose=true;
+
+GBorientations=GB_Orientations(Rots1,Rots2,Orient_Options);
+
+Const_Options.Overlap_Tol=0;
+Const_Options.nGBs=14;
+Const_Options.NormSlabDim=[50 50];
+Const_Options.Vacuum=40;
+Const_Options.GBregion=25;
+Const_Options.Plane_Shift=[0.001 0.001];
+Const_Options.Translate=[0 0 0 0 0 0];
+
+Const_Options.Verbose=true;
+GB_Construct(GBorientations,Const_Options)

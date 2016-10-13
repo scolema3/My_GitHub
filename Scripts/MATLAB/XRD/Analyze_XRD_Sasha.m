@@ -18,7 +18,31 @@ ExpData=[
     6.5574   24.1237
     3.1977   14.1050
     2.3279   13.6405];
-    
+ExpData=[  
+  10.9233  100.0000
+   10.7528   81.4938
+   14.2830   42.1657
+    9.4908   35.4058
+    8.9280   19.6745
+    6.5400   26.1632
+   16.2784   22.5120
+   16.5512   19.5285
+   13.1063   11.6837
+    8.4163    7.4066
+   13.8900    0.3964
+   15.1528    3.3799
+   15.5962    2.0238
+   15.0200    8.3664
+   15.2900    0.7720
+    9.6780   12.7686
+   10.1600    9.1383
+   10.3800    8.3664
+   11.2300    1.8151
+   12.1700    0.8763
+   12.5800    1.3770
+   13.4100    1.0015
+   16.8900    1.7317
+   17.0100    1.0432]    
     
 % XRD files 
 files = dir('*.xrd');
@@ -591,12 +615,13 @@ end
 % later if desired
 Weight=ones(length(ExpData),1);
 
+Weight=ExpData(:,2)/max(ExpData(:,2));
 
 Obj=zeros(length(XRD),1);
 for i=1:length(XRD)
   for j=1:length(ExpData)
     MinDist=min(abs(XRD{i}.PeakLocInt(:,1)-ExpData(j,1)));
-    Obj(i)=Obj(i)+MinDist*1/Weight(j);
+    Obj(i)=Obj(i)+MinDist*Weight(j);
   end
 end
 
@@ -607,8 +632,64 @@ if save_peak_info==1;
   fid=fopen(['LIST_' save_peak_file],'w');
   fprintf(fid,'FileName   | Objective Function');
   for i=1:length(IDobj)
-    fprintf(fid,'\n%s %3.2f',XRD{i}.filename,Obj(IDobj(i)));
+    fprintf(fid,'\n%s %3.2f',XRD{IDobj(i)}.filename,Obj(IDobj(i)));
   end
   fid=fclose(fid);
+end
+
+
+
+
+if display_result==1
+  close all; clc
+  figure('name','XRD','Color','w', 'position',[-1566 204 1508 1490])
+  cmap=colormap(lines(length(XRD)));
+  
+  linw=3;
+  fs0=18;
+  fs1=24;
+  fs2=24;
+  fname='Arial';
+  
+  doffset=.95;
+  crop=0.025;
+  xloc=.60;
+  yloc=0.7*doffset;
+  
+  
+  % Adjust order of line profiles using ID
+  N=5
+  ID=IDobj([1:N]);
+  LabelID=[ID];
+  
+    
+  for i=1:length(ExpData)
+      plot([ExpData(i,1) ExpData(i,1)],[-100 100],'linewidth',ExpData(i,2)/ExpData(1,2)*10); hold on
+  end
+  
+  for i=1:length(ID);
+    hold on
+    if i==1
+      offset=0;
+      plot(XRD{ID(i)}.theta_f,XRD{ID(i)}.intensity_fs/max(XRD{ID(i)}.intensity_fs)+offset,'color',cmap(i,:),'linewidth',linw);
+    else
+      offset=offset+doffset;
+      plot(XRD{ID(i)}.theta_f,XRD{ID(i)}.intensity_fs/max(XRD{ID(i)}.intensity_fs)+offset,'color',cmap(i,:),'linewidth',linw);
+    end
+    text((max(XRD{ID(i)}.theta_f)-min(XRD{ID(i)}.theta_f))*xloc+min(XRD{ID(i)}.theta_f),offset+yloc,XRD{ID(i)}.filename(1:end),'interpret','none','color',cmap(i,:),'fontsize',fs1)
+  end
+  
+
+  
+  axis([min(XRD{1}.theta_f) max(XRD{1}.theta_f) -crop offset+1+crop])
+  xlabel(['2',char(952),char(176)],'Interpreter','tex','fontsize',fs2,'Fontname',fname);
+  ylabel(['Intensity'],'Interpreter','tex','fontsize',fs2,'Fontname',fname)
+  set(gca,'fontsize',fs0,'ytick',[],'xminortick','on','tickdir','out','linewidth',2,'Fontname',fname)
+  
+  if save_result==1
+    Image_Name=XRD{1}.filename(1:end);
+    expfig=['export_fig ' Image_Name ' -eps -pdf -png']
+    eval(expfig)
+  end
 end
 

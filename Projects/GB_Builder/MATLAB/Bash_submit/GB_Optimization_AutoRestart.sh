@@ -605,6 +605,10 @@ do
     Name=${Name#*$Find_Prefix}             # remove prefix 
     mkdir -p $Work_Dir/$Name/
 
+   # Checking for previous run
+   if [-a $Work_Dir/$Name/$Name.dat
+
+
     # Obtaining values from datafile
     nTypes=`grep "atom types" $FullPath`
     nTypes=${nTypes%atom*}

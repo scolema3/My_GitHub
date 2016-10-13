@@ -1,7 +1,6 @@
 function GB_Construct(GBorientations,Const_Options)
 
 
-
 % Creating grain boundaries using grain boundary orientaitons 
 % and options to fine tune the structure (i.e. translations, 
 % atom deletions, terminating plane adjustments)
@@ -154,6 +153,7 @@ Ideal_Stoich=[Stoich1_ideal;Stoich1_ideal;...
               Stoich2_ideal;Stoich2_ideal];
 
 
+
 %% Prepare For Transfer
 if Archive==true
   if ismember(1,Write_Style)
@@ -211,6 +211,7 @@ for id=GBid                    % Looping over GB set
   fprintf('grain boundary.\n');
   
   fid=[];
+  Head1={};
   if Verbose==true
     fid=[1];
   end  
@@ -269,8 +270,7 @@ for id=GBid                    % Looping over GB set
     end
     Head1=mfprintf(fid,Head1,'\n');
   end
-  
-
+    
   %% Create Lattices
   % Determine the min and maximum translations of the Basis 
   %  required to fill the simulation space
@@ -294,18 +294,35 @@ for id=GBid                    % Looping over GB set
   % Create Lattice 1
   Ly=-NormSlabDim(1)-Plane_Shift(1);
 
+  for k=[1 3]
+      if Strain(k)<0
+          Strain1(k)=-Strain(k);
+      else 
+          Strain1(k)=0;
+      end
+  end
+
   AtomDat1=GB_FillRegion(Lattice1,Basis1,...
-                         GBorientations(id).Lat(1),Lx,Ly,Lz,0);
- 
+                         GBorientations(id).Lat(1),Lx,Ly,Lz,0,Strain1);
+
   % Shift grain inward to expose different terminating plane
   AtomDat1(:,3)=AtomDat1(:,3)+Plane_Shift(1);                       
   AtomDat1(AtomDat1(:,3)>0,:)=[];
   
-  % Create Lattice 2  
+  % Create Lattice 2    
   Ly=NormSlabDim(2)+Plane_Shift(2);
+  
+  for k=[1 3]
+      if Strain(k)>0
+          Strain2(k)=Strain(k);
+      else 
+          Strain2(k)=0;
+      end
+  end
+  
   AtomDat2=GB_FillRegion(Lattice2,Basis2,...
                          GBorientations(id).Lat(2),Lx,Ly,Lz,...
-                         2*max(Basis1(:,1)));
+                         2*max(Basis1(:,1)),Strain2);
                        
   % Shift grain inward to expose different terminating plane                       
   AtomDat2(:,3)=AtomDat2(:,3)-Plane_Shift(2); 
@@ -313,7 +330,6 @@ for id=GBid                    % Looping over GB set
                        
   AtomData=[AtomDat1;AtomDat2];
   Initial_AtomTypes=AtomData(:,1);
-  
          
   %% Assigning atom types to the various regions
   
@@ -334,22 +350,8 @@ for id=GBid                    % Looping over GB set
   clear nAtoms nAtomsGB nLat1 nLat2 nLat1GB nLat2GB s
   
   
-  %% Fine tuning the simulation geometry
-  %% Strain each direction within one lattice to create a more 
-  %  coherent boundary
-  for k=[1 3]
-    if Strain(k) >=0
-      Select=ismember(AtomData(:,1),Lat2Types);
-      AtomData(Select,k+1)=AtomData(Select,k+1).*(1+Strain(k));
-    else
-      Select=ismember(AtomData(:,1),Lat1Types);
-      AtomData(Select,k+1)=AtomData(Select,k+1).*...
-                         (1+abs(Strain(k)));
-    end
-  end
-
-
   %% Adjusting for overlapping periodic boundary conditions
+  PBC_Overlap_Tol=1;
   [AtomData,Overlap_Id]=GB_WrapPBC(AtomData,[Lx 0 Lz],PBC_Overlap_Tol);
   nPBC_overlap=length(Overlap_Id);
   Initial_AtomTypes(Overlap_Id)=[];
@@ -412,11 +414,10 @@ for id=GBid                    % Looping over GB set
   overlap_id=[];
   buff=Overlap_Tol;  % only consider atoms within buffer near boundary
 
-  Edge1=find(ismember(AtomData(:,1),Lat1Types) & AtomData(:,3)>=buff);
+  Edge1=find(ismember(AtomData(:,1),Lat1Types) & AtomData(:,3)>=-buff);
   n1=length(Edge1);
-  Edge2=find(ismember(AtomData(:,1),Lat2Types) & AtomData(:,3)>=-buff);
+  Edge2=find(ismember(AtomData(:,1),Lat2Types) & AtomData(:,3)<=buff);
   n2=length(Edge2);
-
   for m=Edge1'
     delta=(ones(n2,1)*AtomData(m,2:4)-AtomData(Edge2,2:4));
     check=min(sqrt(sum(delta.^2,2)));
@@ -583,10 +584,10 @@ if Archive==true
     tar([Dir_Base '_Data.tgz'],[Dir_Base '_Data'])
   end
   if ismember(2,Write_Style)
-    tar([Dir_Base 'Dump.tgz'],[Dir_Base '_Dump'])
+    tar([Dir_Base '_Dump.tgz'],[Dir_Base '_Dump'])
   end
   if ismember(3,Write_Style)
-    tar([Dir_Base 'Car.tgz'],[Dir_Base '_Car'])
+    tar([Dir_Base '_Car.tgz'],[Dir_Base '_Car'])
   end
 end
 

@@ -1,7 +1,4 @@
-function [AtomData]=GB_FillRegion(Lattice,Basis,Orientation,Lx,Ly,Lz,TypeOffset,Shift)
-
-% Filling a volume region with atoms
-
+function [AtomData]=GB_FillRegion(Lattice,Basis,Orientation,Lx,Ly,Lz,TypeOffset,Strain)
 
 %% Setup variables
 w = whos;
@@ -10,9 +7,15 @@ vars.(w(a).name) = eval(w(a).name);
 end
 vars_pass=GB_Vars(vars,'GB_FillRegion');
 
+
 varNames=fieldnames(vars_pass);
 for  i=1:length(varNames)
     eval([varNames{i} '=' 'vars_pass.(varNames{i});']);
+end
+
+% Filling a volume region with atoms
+if exist('Strain')==0
+    Strain=[0 0 0];
 end
 
 %% Simulation dimensions in periodic directions - defining the 
@@ -59,6 +62,8 @@ buff=0.2;
 AtomData=[];
 count=0;
 
+
+
 %% Construct Lattice
 for x=floor(BoundsLat(1,1)/Block):ceil(BoundsLat(1,2)/Block)
   for y=floor(BoundsLat(2,1)/Block):ceil(BoundsLat(2,2)/Block)
@@ -70,6 +75,10 @@ for x=floor(BoundsLat(1,1)/Block):ceil(BoundsLat(1,2)/Block)
       % Transform basis into the expanded lattices for each grain
       ExpandLattice=[Expand(:,1) Shift*Lattice*Rot];
 
+      % Strain lattice as needed
+      ExpandLattice(:,2)=ExpandLattice(:,2)*(1+Strain(1));
+      ExpandLattice(:,4)=ExpandLattice(:,4)*(1+Strain(3));
+      
       % Check boundary conditions
       Select=ExpandLattice(:,2)>=-buff+Mins(1) & ...
           ExpandLattice(:,2)<=buff+Maxs(1) & ...

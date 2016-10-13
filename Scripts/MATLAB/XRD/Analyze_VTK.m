@@ -7,7 +7,7 @@ Threshold=0;
 
 % VTK data file of intensities.
 % cd /home/scoleman/Research/Polymer/PACM/2D
-fid=fopen('gs5_compression_All_0_saed.0.vtk');
+fid=fopen('Bulk_saed.0rig.vtk');
 
 % Read in data and dimensions.
 head=textscan(fid,'%s %*[^\n]',4);
@@ -50,7 +50,10 @@ fclose(fid);
 
 plot3(Intensity(:,1),Intensity(:,2),Intensity(:,3),'.')
 
-slice=find(Intensity(:,1)==0);
+slice=find(Intensity(:,4)>10);
 
-scatter3(Intensity(slice,2),Intensity(slice,3),log10(Intensity(slice,4)),[],log10(Intensity(slice,4)))
+scatter3(Intensity(slice,1),Intensity(slice,2),Intensity(slice,3),[],log(Intensity(slice,4)))
+
+format long
+[Intensity(slice,1),Intensity(slice,2),Intensity(slice,3)]
 axis square

@@ -1,0 +1,210 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module DiffractionSim</title>
+<meta charset="utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>DiffractionSim</strong></big></big> (version 1.1.0)</font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:///C:/users/adherron/documents/co_ni_al%20project/diffraction_simulation/diffractionsim.py">c:\users\adherron\documents\co_ni_al project\diffraction_simulation\diffractionsim.py</a></font></td></tr></table>
+    <p><tt><a href="#DiffractionSim">DiffractionSim</a>&nbsp;-&nbsp;toolset&nbsp;to&nbsp;perform&nbsp;simulated&nbsp;SAED&nbsp;and&nbsp;Kikuchi&nbsp;Diffraction<br>
+&nbsp;<br>
+:argument&nbsp;A&nbsp;=&nbsp;<a href="#DiffractionSim">DiffractionSim</a>(&nbsp;[wavelength]&nbsp;)&nbsp;-&nbsp;see&nbsp;documentation&nbsp;for&nbsp;__init__&nbsp;method<br>
+&nbsp;<br>
+:return&nbsp;Instance&nbsp;of&nbsp;the&nbsp;<a href="#DiffractionSim">DiffractionSim</a>&nbsp;Class<br>
+&nbsp;<br>
+&nbsp;<br>
+Python/System&nbsp;requirements:<br>
+All&nbsp;system&nbsp;requirements&nbsp;are&nbsp;met&nbsp;by&nbsp;using&nbsp;Anaconda,&nbsp;a&nbsp;free&nbsp;scientific&nbsp;computing&nbsp;python&nbsp;distrubution.&nbsp;If&nbsp;you&nbsp;don't<br>
+want&nbsp;to&nbsp;use&nbsp;Anaconda,&nbsp;the&nbsp;individual&nbsp;requirement&nbsp;are&nbsp;as&nbsp;follows:<br>
+&nbsp;<br>
+Python&nbsp;2.7&nbsp;(developed&nbsp;in&nbsp;2.7.9)<br>
+HDF5&nbsp;(required&nbsp;for&nbsp;save()&nbsp;and&nbsp;load()&nbsp;functionality)<br>
+&nbsp;<br>
+Numpy&nbsp;module<br>
+Scipy&nbsp;module<br>
+Tkinter&nbsp;module<br>
+tkFileDialog&nbsp;module<br>
+matplotlib&nbsp;module<br>
+h5py&nbsp;module<br>
+&nbsp;<br>
+Basics&nbsp;of&nbsp;how&nbsp;to&nbsp;use&nbsp;this&nbsp;module:<br>
+&nbsp;<br>
+*&nbsp;To&nbsp;get&nbsp;started,&nbsp;import&nbsp;the&nbsp;module&nbsp;into&nbsp;python:&nbsp;import&nbsp;<a href="#DiffractionSim">DiffractionSim</a>&nbsp;<br>
+&nbsp;<br>
+*&nbsp;Create&nbsp;an&nbsp;instance&nbsp;of&nbsp;the&nbsp;<a href="#DiffractionSim">DiffractionSim</a>&nbsp;class&nbsp;by&nbsp;calling&nbsp;[var]&nbsp;=&nbsp;<a href="#DiffractionSim">DiffractionSim</a>(&nbsp;[wavelength]&nbsp;)&nbsp;<br>
+&nbsp;<br>
+*&nbsp;Use&nbsp;the&nbsp;methods&nbsp;of&nbsp;the&nbsp;<a href="#DiffractionSim">DiffractionSim</a>&nbsp;class&nbsp;to&nbsp;manipulate&nbsp;that&nbsp;object.&nbsp;For&nbsp;instance:&nbsp;<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;read&nbsp;in&nbsp;VTK&nbsp;or&nbsp;HDF5&nbsp;data&nbsp;using&nbsp;[var].read_data()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;filter&nbsp;data&nbsp;in&nbsp;various&nbsp;ways&nbsp;using&nbsp;[var].threshold_data()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;search&nbsp;for&nbsp;peaks&nbsp;in&nbsp;3D&nbsp;data&nbsp;using&nbsp;[var].find_peaks3D()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;map&nbsp;3D&nbsp;data&nbsp;(or&nbsp;slice&nbsp;of&nbsp;3D&nbsp;data)&nbsp;to&nbsp;2D&nbsp;screen&nbsp;using&nbsp;[var].map2saed_screen()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;view&nbsp;the&nbsp;2D&nbsp;screen&nbsp;using&nbsp;[var].image_screen()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;after&nbsp;2D&nbsp;mapping,&nbsp;search&nbsp;for&nbsp;2D&nbsp;peaks&nbsp;using&nbsp;[var].find_peaks2D()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;after&nbsp;2D&nbsp;peak&nbsp;search&nbsp;view&nbsp;the&nbsp;2D&nbsp;peaks&nbsp;using&nbsp;view_peaks2D()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;after&nbsp;finding&nbsp;3D&nbsp;peak&nbsp;data,&nbsp;call&nbsp;[var].view_peaks3D()&nbsp;to&nbsp;plot&nbsp;a&nbsp;3D&nbsp;figure<br>
+&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;save&nbsp;a&nbsp;copy&nbsp;of&nbsp;[var]&nbsp;to&nbsp;manipulate/image/etc&nbsp;later&nbsp;using&nbsp;[var].save()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;load&nbsp;an&nbsp;old&nbsp;copy&nbsp;of&nbsp;[var]&nbsp;using&nbsp;[var].read_data()&nbsp;or&nbsp;[var].load&nbsp;(read_data()&nbsp;calls&nbsp;load()&nbsp;if&nbsp;HDF5)</tt></p>
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="DiffractionSim.html#DiffractionSim">DiffractionSim</a>
+</font></dt></dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="DiffractionSim">class <strong>DiffractionSim</strong></a></font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Class&nbsp;for&nbsp;handling&nbsp;and&nbsp;visualizing&nbsp;diffraction&nbsp;simulation&nbsp;data<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="DiffractionSim-__init__"><strong>__init__</strong></a>(self, wavelength<font color="#909090">=0.0251</font>)</dt><dd><tt>Creates&nbsp;an&nbsp;instance&nbsp;of&nbsp;the&nbsp;<a href="#DiffractionSim">DiffractionSim</a>&nbsp;class<br>
+&nbsp;<br>
+:argument&nbsp;A&nbsp;=&nbsp;<a href="#DiffractionSim">DiffractionSim</a>(&nbsp;[wavelength]&nbsp;)<br>
+&nbsp;<br>
+:parameter&nbsp;[wavelength]:&nbsp;characteristic&nbsp;wavelength&nbsp;of&nbsp;the&nbsp;simulated&nbsp;rediation&nbsp;in&nbsp;the&nbsp;system.&nbsp;It&nbsp;is&nbsp;used&nbsp;to<br>
+determine&nbsp;the&nbsp;radius&nbsp;of&nbsp;the&nbsp;Ewald&nbsp;Sphere.&nbsp;It&nbsp;is&nbsp;a&nbsp;public&nbsp;member&nbsp;and&nbsp;can&nbsp;be&nbsp;changed&nbsp;at&nbsp;any&nbsp;time</tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-find_peaks2D"><strong>find_peaks2D</strong></a>(self, sigma<font color="#909090">=2</font>, blur_steps<font color="#909090">=4</font>)</dt><dd><tt>method&nbsp;to&nbsp;find&nbsp;peaks&nbsp;in&nbsp;the&nbsp;2D&nbsp;self.<strong>screen_i</strong>&nbsp;after&nbsp;gaussian&nbsp;blurring<br>
+&nbsp;<br>
+argument:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;peaks&nbsp;=&nbsp;self.<a href="#DiffractionSim-find_peaks2D">find_peaks2D</a>(sigma,&nbsp;blur_steps)<br>
+&nbsp;<br>
+:param&nbsp;[sigma]:&nbsp;float,&nbsp;standard&nbsp;deviation&nbsp;used&nbsp;in&nbsp;the&nbsp;gaussian&nbsp;blur<br>
+&nbsp;<br>
+:param&nbsp;[blur_steps]:&nbsp;integer&nbsp;&gt;=&nbsp;0,&nbsp;number&nbsp;of&nbsp;times&nbsp;the&nbsp;image&nbsp;is&nbsp;seqentially&nbsp;blurred&nbsp;before&nbsp;the&nbsp;maximum&nbsp;filter&nbsp;is&nbsp;applied<br>
+&nbsp;<br>
+:return&nbsp;[peaks]:&nbsp;a&nbsp;boolean&nbsp;array&nbsp;the&nbsp;same&nbsp;size&nbsp;as&nbsp;self.<strong>screen_i</strong>&nbsp;which&nbsp;is&nbsp;true&nbsp;at&nbsp;local&nbsp;maxima</tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-find_peaks3D"><strong>find_peaks3D</strong></a>(self, search_radius<font color="#909090">=0.09</font>, integral_radius<font color="#909090">=0.09</font>, threshold_magnitude<font color="#909090">=-1</font>, threshold<font color="#909090">=None</font>, k_min<font color="#909090">=0</font>, k_max<font color="#909090">=1.1</font>)</dt><dd><tt>method&nbsp;to&nbsp;locate&nbsp;intensity&nbsp;peaks&nbsp;and&nbsp;calculate&nbsp;a&nbsp;numerical&nbsp;integral&nbsp;intensity&nbsp;for&nbsp;each&nbsp;peak<br>
+&nbsp;<br>
+:argument&nbsp;self.find_peaks([search_radius],&nbsp;[integral_radius])<br>
+&nbsp;<br>
+:parameter&nbsp;[search_radius]:&nbsp;distance&nbsp;from&nbsp;each&nbsp;point&nbsp;that&nbsp;the&nbsp;algorithm&nbsp;will&nbsp;search&nbsp;for&nbsp;maxima<br>
+&nbsp;<br>
+:parameter&nbsp;[integral_radius]:&nbsp;radius&nbsp;from&nbsp;maxima&nbsp;for&nbsp;inclusion&nbsp;of&nbsp;neighbor&nbsp;inetensity&nbsp;in&nbsp;integral&nbsp;calculation<br>
+&nbsp;<br>
+:parameter&nbsp;[k_min]:&nbsp;distance&nbsp;from&nbsp;origin&nbsp;to&nbsp;filter&nbsp;out&nbsp;data&nbsp;(removes&nbsp;center&nbsp;peak)<br>
+&nbsp;<br>
+:parameter&nbsp;[k_max]:&nbsp;distance&nbsp;from&nbsp;origin&nbsp;to&nbsp;filter&nbsp;out&nbsp;data&nbsp;(removes&nbsp;outside&nbsp;fringe)<br>
+&nbsp;<br>
+:returns&nbsp;None:&nbsp;stores&nbsp;data&nbsp;in&nbsp;self.<strong>peaks</strong>&nbsp;as&nbsp;an&nbsp;m&nbsp;x&nbsp;5&nbsp;array&nbsp;with&nbsp;peak&nbsp;data:<br>
+m&nbsp;rows&nbsp;of:&nbsp;&nbsp;[reciprocal_point&nbsp;index,&nbsp;h,&nbsp;k,&nbsp;l,&nbsp;integral_intensity]</tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-hr_transform"><strong>hr_transform</strong></a>(self, screen<font color="#909090">=None</font>, shift<font color="#909090">=1</font>)</dt><dd><tt>Method&nbsp;that&nbsp;tests&nbsp;the&nbsp;ability&nbsp;of&nbsp;this&nbsp;class&nbsp;to&nbsp;generate&nbsp;high-resolution&nbsp;images&nbsp;by&nbsp;performing&nbsp;a&nbsp;2D&nbsp;fast<br>
+fourier&nbsp;transform&nbsp;and&nbsp;then&nbsp;a&nbsp;phase&nbsp;shift&nbsp;on&nbsp;a&nbsp;complex&nbsp;2D&nbsp;image<br>
+&nbsp;<br>
+:param&nbsp;[screen]:&nbsp;an&nbsp;n&nbsp;x&nbsp;n&nbsp;complex&nbsp;numpy&nbsp;array&nbsp;that&nbsp;contains&nbsp;the&nbsp;image&nbsp;to&nbsp;be&nbsp;transformed&nbsp;(defaults&nbsp;to&nbsp;self.<strong>screen_i</strong>)<br>
+:param&nbsp;[shift]:&nbsp;phase&nbsp;shift&nbsp;angle&nbsp;(in&nbsp;radians)<br>
+:returns&nbsp;[screen_2]:&nbsp;transformed&nbsp;n&nbsp;x&nbsp;n&nbsp;complex&nbsp;numpy&nbsp;array</tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-image_screen"><strong>image_screen</strong></a>(self, screen<font color="#909090">=None</font>, exposure_c<font color="#909090">=2</font>, sigma<font color="#909090">=2</font>, blur_steps<font color="#909090">=2</font>, plot<font color="#909090">=True</font>, file_name<font color="#909090">=None</font>)</dt><dd><tt>Smooths&nbsp;and&nbsp;plots&nbsp;(or&nbsp;saves)&nbsp;data&nbsp;stored&nbsp;in&nbsp;an&nbsp;nxm&nbsp;image-like&nbsp;array&nbsp;(defaults&nbsp;to&nbsp;self.<strong>screen_i</strong>)<br>
+&nbsp;<br>
+:param&nbsp;[screen]:&nbsp;nxm&nbsp;image-like&nbsp;array&nbsp;to&nbsp;show/save&nbsp;-&nbsp;defaults&nbsp;to&nbsp;self.<strong>screen_i</strong><br>
+&nbsp;<br>
+:param&nbsp;[exposure_c]:&nbsp;exposure&nbsp;constant&nbsp;(1&nbsp;currently&nbsp;tunes&nbsp;to&nbsp;a&nbsp;good&nbsp;value&nbsp;for&nbsp;Ni-Co-Aluminum)<br>
+&nbsp;<br>
+:param&nbsp;[sigma]:&nbsp;sigma&nbsp;for&nbsp;the&nbsp;Gaussian&nbsp;Convolution<br>
+&nbsp;<br>
+:param&nbsp;[blur_steps]:&nbsp;number&nbsp;of&nbsp;sequential&nbsp;convolutions&nbsp;to&nbsp;perform&nbsp;on&nbsp;the&nbsp;image<br>
+&nbsp;<br>
+:param&nbsp;[plot]:&nbsp;True&nbsp;opens&nbsp;a&nbsp;matplotlib&nbsp;window&nbsp;and&nbsp;plots&nbsp;the&nbsp;image&nbsp;for&nbsp;the&nbsp;user&nbsp;to&nbsp;view<br>
+&nbsp;<br>
+:param&nbsp;[file_name]:&nbsp;if&nbsp;specified,&nbsp;an&nbsp;image&nbsp;is&nbsp;saved&nbsp;to&nbsp;disk&nbsp;under&nbsp;this&nbsp;name&nbsp;(in&nbsp;current&nbsp;working&nbsp;directory)&nbsp;or&nbsp;path<br>
+&nbsp;<br>
+:return:&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-load"><strong>load</strong></a>(self, file_name<font color="#909090">='FileDialogGUI'</font>)</dt><dd><tt>Loads&nbsp;a&nbsp;previously&nbsp;saved&nbsp;version&nbsp;of&nbsp;the&nbsp;<a href="#DiffractionSim">DiffractionSim</a>&nbsp;object&nbsp;saved&nbsp;using&nbsp;self.<a href="#DiffractionSim-save">save</a>().<br>
+&nbsp;<br>
+:argument&nbsp;self.<a href="#DiffractionSim-load">load</a>(&nbsp;[file_name]&nbsp;)<br>
+&nbsp;<br>
+:parameter&nbsp;[file_name]:&nbsp;If&nbsp;a&nbsp;file&nbsp;name&nbsp;is&nbsp;passed,&nbsp;this&nbsp;name&nbsp;is&nbsp;used.&nbsp;Otherwise,&nbsp;a&nbsp;TK&nbsp;file&nbsp;dialog&nbsp;box&nbsp;is&nbsp;opened<br>
+for&nbsp;the&nbsp;user</tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-map2saed_screen"><strong>map2saed_screen</strong></a>(self, k<font color="#909090">=None</font>, zone<font color="#909090">=None</font>, threshold_magnitude<font color="#909090">=-1</font>, k_min<font color="#909090">=0</font>, k_max<font color="#909090">=1.1</font>, pixel_dim<font color="#909090">=256</font>, shell_thickness<font color="#909090">=None</font>, threshold<font color="#909090">=None</font>)</dt><dd><tt>method&nbsp;that&nbsp;maps&nbsp;3D&nbsp;reciprocal_point&nbsp;data&nbsp;onto&nbsp;a&nbsp;2D&nbsp;saed_screen&nbsp;for&nbsp;image&nbsp;manipulation&nbsp;and&nbsp;viewing<br>
+&nbsp;<br>
+:param&nbsp;[k]:&nbsp;points&nbsp;to&nbsp;map&nbsp;onto&nbsp;the&nbsp;screen&nbsp;(nx5)&nbsp;array&nbsp;of&nbsp;row&nbsp;[index,&nbsp;h,&nbsp;k,&nbsp;l,&nbsp;intensity]<br>
+&nbsp;<br>
+:param&nbsp;[zone]:&nbsp;zone&nbsp;axis&nbsp;to&nbsp;view&nbsp;-&nbsp;defaults&nbsp;to&nbsp;self.<strong>zone</strong>&nbsp;set&nbsp;or&nbsp;loaded&nbsp;during&nbsp;self.<a href="#DiffractionSim-read_data">read_data</a>()<br>
+&nbsp;<br>
+:param&nbsp;[threshold_magnitude]:&nbsp;number&nbsp;of&nbsp;orders&nbsp;of&nbsp;magnitude&nbsp;of&nbsp;intensity&nbsp;below&nbsp;the&nbsp;maximu&nbsp;below&nbsp;which&nbsp;all&nbsp;data<br>
+is&nbsp;filtered&nbsp;out<br>
+&nbsp;<br>
+:param&nbsp;[k_min]:&nbsp;minimum&nbsp;distance&nbsp;from&nbsp;origin&nbsp;below&nbsp;which&nbsp;all&nbsp;data&nbsp;is&nbsp;filtered&nbsp;out<br>
+&nbsp;<br>
+:param&nbsp;[k_max]:&nbsp;maximum&nbsp;distance&nbsp;from&nbsp;origin&nbsp;above&nbsp;which&nbsp;all&nbsp;data&nbsp;is&nbsp;filtered&nbsp;out<br>
+&nbsp;<br>
+:param&nbsp;[pixel_dim]:&nbsp;number&nbsp;of&nbsp;pixels&nbsp;high/wide&nbsp;that&nbsp;the&nbsp;square&nbsp;screen&nbsp;is<br>
+&nbsp;<br>
+:param&nbsp;[shell_thickness]:&nbsp;if&nbsp;specified,&nbsp;this&nbsp;limits&nbsp;the&nbsp;points&nbsp;mapped&nbsp;to&nbsp;only&nbsp;those&nbsp;within&nbsp;a&nbsp;swath&nbsp;of&nbsp;this&nbsp;width<br>
+surrounding&nbsp;the&nbsp;ewald&nbsp;sphere<br>
+&nbsp;<br>
+:param&nbsp;[threshold]:&nbsp;can&nbsp;be&nbsp;used&nbsp;instead&nbsp;of&nbsp;threshold_magnitude&nbsp;-&nbsp;points&nbsp;below&nbsp;this&nbsp;intensity&nbsp;are&nbsp;filtered&nbsp;out<br>
+&nbsp;<br>
+:return&nbsp;[None]:&nbsp;mapped&nbsp;points&nbsp;are&nbsp;stored&nbsp;in&nbsp;self.<strong>screen_i</strong>,&nbsp;a&nbsp;pixel_dim&nbsp;x&nbsp;pixel_dim&nbsp;array&nbsp;of&nbsp;floats</tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-read_data"><strong>read_data</strong></a>(self, file_name<font color="#909090">='FileDialogGUI'</font>, zone<font color="#909090">=None</font>, n_atoms<font color="#909090">=None</font>)</dt><dd><tt>Reads&nbsp;K-points&nbsp;and&nbsp;intensity&nbsp;values&nbsp;from&nbsp;data&nbsp;file&nbsp;or&nbsp;loads&nbsp;a&nbsp;previous&nbsp;<a href="#DiffractionSim">DiffractionSim</a>&nbsp;state&nbsp;from&nbsp;an&nbsp;hdf5&nbsp;file<br>
+&nbsp;<br>
+At&nbsp;this&nbsp;point,&nbsp;<a href="#DiffractionSim-read_data">read_data</a>()&nbsp;only&nbsp;accepts&nbsp;vtk&nbsp;files&nbsp;output&nbsp;from&nbsp;Shawn&nbsp;Coleman's&nbsp;LAMMPS&nbsp;code&nbsp;fix_time_ave_saed,<br>
+txt&nbsp;files&nbsp;output&nbsp;by&nbsp;Eric&nbsp;Homer's&nbsp;intSAED&nbsp;LAMMPS&nbsp;code,&nbsp;and&nbsp;HDF5&nbsp;files&nbsp;created&nbsp;using&nbsp;the&nbsp;<a href="#DiffractionSim-save">save</a>()&nbsp;method<br>
+&nbsp;<br>
+:argument&nbsp;<a href="#DiffractionSim-read_data">read_data</a>(&nbsp;[file_name]&nbsp;)<br>
+&nbsp;<br>
+:parameter&nbsp;[file_name]:&nbsp;name&nbsp;of&nbsp;or&nbsp;path&nbsp;to&nbsp;desired&nbsp;data&nbsp;file&nbsp;-&nbsp;the&nbsp;default&nbsp;value&nbsp;opens&nbsp;a&nbsp;TK&nbsp;file&nbsp;dialog&nbsp;window<br>
+&nbsp;<br>
+:parameter&nbsp;[zone]:&nbsp;zone&nbsp;associated&nbsp;with&nbsp;the&nbsp;file&nbsp;to&nbsp;read&nbsp;in<br>
+&nbsp;<br>
+:parameter&nbsp;[n_atoms]:&nbsp;number&nbsp;of&nbsp;atoms&nbsp;associated&nbsp;with&nbsp;this&nbsp;simulation<br>
+&nbsp;<br>
+:returns&nbsp;[None]:&nbsp;stores&nbsp;data&nbsp;in&nbsp;self.<strong>reciprocal_points</strong>,&nbsp;self.<strong>intensity</strong>,&nbsp;self.<strong>n_k</strong>,&nbsp;and&nbsp;self.<strong>k_mag</strong></tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-save"><strong>save</strong></a>(self, file_name<font color="#909090">='FileDialogGUI'</font>)</dt><dd><tt>Saves&nbsp;the&nbsp;current&nbsp;state&nbsp;of&nbsp;the&nbsp;<a href="#DiffractionSim">DiffractionSim</a>&nbsp;object&nbsp;to&nbsp;an&nbsp;hdf5&nbsp;file&nbsp;for&nbsp;later&nbsp;use&nbsp;-&nbsp;load&nbsp;it&nbsp;using&nbsp;<a href="#DiffractionSim-load">load</a>()<br>
+&nbsp;<br>
+:argument&nbsp;self.<a href="#DiffractionSim-save">save</a>(&nbsp;[file_name]&nbsp;)<br>
+&nbsp;<br>
+:parameter&nbsp;[&nbsp;file_name&nbsp;]:&nbsp;If&nbsp;a&nbsp;file&nbsp;name&nbsp;is&nbsp;passed,&nbsp;this&nbsp;name&nbsp;is&nbsp;used&nbsp;and&nbsp;same-name&nbsp;files&nbsp;are&nbsp;overwirtten<br>
+&nbsp;<br>
+Otherwise,&nbsp;a&nbsp;TK&nbsp;file&nbsp;dialog&nbsp;box&nbsp;is&nbsp;opened&nbsp;for&nbsp;the&nbsp;user</tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-threshold_data"><strong>threshold_data</strong></a>(self, threshold_magnitude<font color="#909090">=-1</font>, k_min<font color="#909090">=-1</font>, k_max<font color="#909090">=1.1</font>, threshold<font color="#909090">=None</font>)</dt><dd><tt>Selects&nbsp;points&nbsp;from&nbsp;self.<strong>recipocal_points</strong>&nbsp;via&nbsp;threshold&nbsp;criterion&nbsp;and&nbsp;returns&nbsp;an&nbsp;(n&nbsp;x&nbsp;5)&nbsp;numpy&nbsp;array<br>
+&nbsp;<br>
+:argument&nbsp;k&nbsp;=&nbsp;<a href="#DiffractionSim-threshold_data">threshold_data</a>([threshold_magnitude=5],&nbsp;[k_min=0.05],&nbsp;[k_max=1.1],&nbsp;[threshold])<br>
+&nbsp;<br>
+:parameter&nbsp;[threshold&nbsp;magnitude]:&nbsp;orders&nbsp;of&nbsp;magnitude&nbsp;of&nbsp;intensity&nbsp;below&nbsp;which&nbsp;all&nbsp;points&nbsp;are&nbsp;ignored<br>
+&nbsp;<br>
+If&nbsp;a&nbsp;negative&nbsp;value&nbsp;is&nbsp;passed&nbsp;as&nbsp;threshold&nbsp;magnitude,&nbsp;the&nbsp;threshold&nbsp;will&nbsp;be&nbsp;zero.<br>
+&nbsp;<br>
+:parameter&nbsp;[threshold]:&nbsp;overides&nbsp;the&nbsp;threshold_magnitude&nbsp;parameter&nbsp;by&nbsp;letting&nbsp;the&nbsp;user&nbsp;specify&nbsp;the<br>
+actaul&nbsp;threshold&nbsp;value&nbsp;itself<br>
+&nbsp;<br>
+:parameter&nbsp;[k_min]:&nbsp;distance&nbsp;from&nbsp;origin&nbsp;below&nbsp;which&nbsp;all&nbsp;points&nbsp;are&nbsp;ignored<br>
+&nbsp;<br>
+:parameter&nbsp;[k_max]:&nbsp;distance&nbsp;from&nbsp;origin&nbsp;above&nbsp;which&nbsp;all&nbsp;points&nbsp;are&nbsp;ignored<br>
+&nbsp;<br>
+:returns&nbsp;[k]:&nbsp;one&nbsp;(n&nbsp;x&nbsp;5)&nbsp;numpy&nbsp;array&nbsp;which&nbsp;contains&nbsp;n&nbsp;rows:&nbsp;[reciprocal_points&nbsp;index,&nbsp;h,&nbsp;k,&nbsp;l,&nbsp;intensity]</tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-view_peaks2D"><strong>view_peaks2D</strong></a>(self, screen<font color="#909090">=None</font>, peaks<font color="#909090">=None</font>, exposure_c<font color="#909090">=2</font>, sigma<font color="#909090">=2</font>, blur_steps<font color="#909090">=2</font>, plot<font color="#909090">=True</font>, file_name<font color="#909090">=None</font>)</dt><dd><tt>method&nbsp;to&nbsp;view&nbsp;only&nbsp;those&nbsp;regions&nbsp;of&nbsp;a&nbsp;2D&nbsp;image&nbsp;which&nbsp;are&nbsp;deemed&nbsp;'peaks'<br>
+:param&nbsp;screen:&nbsp;n&nbsp;x&nbsp;n&nbsp;numpy&nbsp;array&nbsp;containing&nbsp;a&nbsp;2D&nbsp;image&nbsp;(defaults&nbsp;to&nbsp;self.<strong>screen_i</strong>)<br>
+:param&nbsp;peaks:&nbsp;n&nbsp;x&nbsp;n&nbsp;boolean&nbsp;array&nbsp;containing&nbsp;peak&nbsp;locations&nbsp;in&nbsp;image&nbsp;(defaults&nbsp;to&nbsp;a&nbsp;new&nbsp;peak&nbsp;search)<br>
+:param&nbsp;exposure_c:&nbsp;exposure&nbsp;level&nbsp;of&nbsp;final&nbsp;image<br>
+:param&nbsp;sigma:&nbsp;standard&nbsp;deviation&nbsp;of&nbsp;Gaussian&nbsp;blurring<br>
+:param&nbsp;blur_steps:&nbsp;interger&nbsp;number&nbsp;of&nbsp;Gaussian&nbsp;blurrings<br>
+:param&nbsp;plot:&nbsp;Boolean&nbsp;that&nbsp;plots&nbsp;the&nbsp;final&nbsp;image&nbsp;for&nbsp;user&nbsp;if&nbsp;True<br>
+:param&nbsp;file_name:&nbsp;if&nbsp;PATH&nbsp;(as&nbsp;a&nbsp;string)&nbsp;is&nbsp;specified,&nbsp;final&nbsp;image&nbsp;is&nbsp;saved&nbsp;to&nbsp;PATH<br>
+:returns:&nbsp;None&nbsp;-&nbsp;saves&nbsp;and/or&nbsp;plots&nbsp;image</tt></dd></dl>
+
+<dl><dt><a name="DiffractionSim-view_peaks3D"><strong>view_peaks3D</strong></a>(self, zone<font color="#909090">=None</font>)</dt><dd><tt>method&nbsp;for&nbsp;plotting&nbsp;intensity&nbsp;peaks&nbsp;in&nbsp;3D&nbsp;from&nbsp;reciprocal_point&nbsp;data<br>
+&nbsp;<br>
+argument:&nbsp;self.<a href="#DiffractionSim-view_peaks3D">view_peaks3D</a>(zone)<br>
+:param&nbsp;[zone]:&nbsp;the&nbsp;direction&nbsp;of&nbsp;the&nbsp;view&nbsp;axis&nbsp;pointing&nbsp;from&nbsp;the&nbsp;origin&nbsp;toward&nbsp;the&nbsp;user's&nbsp;viewpoint.<br>
+:return&nbsp;None:&nbsp;opens&nbsp;a&nbsp;plot&nbsp;for&nbsp;the&nbsp;user&nbsp;to&nbsp;view&nbsp;and&nbsp;manipulate</tt></dd></dl>

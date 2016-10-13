@@ -9,6 +9,7 @@ end
 %% Setup variables
 
 % Read information stored in GrainRot1/2 structures
+
 Info=fieldnames(GrainRot1(1).Info);
 for  i=1:length(Info)
 	eval([Info{i} '1=' 'GrainRot1(1).Info.(Info{i});']);
@@ -105,6 +106,7 @@ else
   GBType='mixed';
   SymmT=eye(3);
 end
+
 tmp1=GrainRot1(1).vectors/Lattice1;
 tmp2=GrainRot1(1).vectors/Lattice2;
 Directions=[tmp1(RotAxis1,:) tmp2(RotAxis2,:)];
@@ -154,25 +156,21 @@ for i=Istart:Istop
     savedata=1;    % Flag to save data
     % Determine periodic repeating distance for the GB  
     % simulation (GB normal is always in the y-direction)
-    for k=[1 3];
-      n1(k,1)=1;
-      n2(k,1)=1;  
-      dim1(k,1)=n1(k)*norm(Lat1.vectors(k,:));
-      dim2(k,1)=n2(k)*norm(Lat2.vectors(k,:));
-      Strain(k,1)=(dim1(k)-dim2(k))/dim1(k);
 
-      while abs(Strain(k)) >= Strain_Tol 
-        % Determine number of repeating units
-        dim1(k,1)=n1(k)*norm(Lat1.vectors(k,:));
-        dim2(k,1)=n2(k)*norm(Lat2.vectors(k,:));
-        Strain(k,1)=(dim1(k)-dim2(k))/dim1(k);
-        if Strain(k) < 0
-          n1(k,1)=n1(k,1)+1;
-        else
-          n2(k,1)=n2(k,1)+1;
-        end
-      end
-    end
+    [n2(1) n1(1)]=rat(norm(Lat1.vectors(1,:))/norm(Lat2.vectors(1,:)),Strain_Tol);
+    [n2(2) n1(2)]=rat(norm(Lat1.vectors(2,:))/norm(Lat2.vectors(2,:)),Strain_Tol);
+    [n2(3) n1(3)]=rat(norm(Lat1.vectors(3,:))/norm(Lat2.vectors(3,:)),Strain_Tol);
+
+    dim1=[n1(1)*norm(Lat1.vectors(1,:))
+          n1(2)*norm(Lat1.vectors(2,:))
+          n1(3)*norm(Lat1.vectors(3,:))];
+
+    dim2=[n2(1)*norm(Lat2.vectors(1,:))
+          n2(2)*norm(Lat2.vectors(2,:))
+          n2(3)*norm(Lat2.vectors(3,:))];
+
+    Strain=(dim1-dim2)./dim1;
+
 
     %% Check if exceeding maximimum allowed dimensions
     Area=max([dim1(1),dim2(1)]) * max([dim1(3),dim2(3)]);
@@ -263,7 +261,7 @@ nGBs=count-1;
 
 if nGBs==0 
   error(['No GB orientations found. '  ...
-     'Try increasing dis_tol or deg_tol, or decrease symmetry.'])
+     'Try increasing dis_tol or deg_tol or MaxArea, or decrease symmetry or MaxInt .'])
 end
 
 if Verbose==true

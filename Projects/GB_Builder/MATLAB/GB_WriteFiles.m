@@ -140,7 +140,7 @@ function GB_WriteFiles(File_Base_id,Write_Style,AtomData,Species,Masses,Corners,
   %% Prepare Output For Transfer
   if Archive==true
     if ismember(1,Write_Style)
-      movefile([File_Base_id '.data'],[Dir_Base '_Data'])
+      movefile([File_Base_id '*ata'],[Dir_Base '_Data'])
     end
     if ismember(2,Write_Style)
       movefile([File_Base_id '.dump'],[Dir_Base '_Dump'])

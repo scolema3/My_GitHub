@@ -2,13 +2,13 @@
 clc;clear;close all
 
 
-files = dir('b*.xrd');
+files = dir('*.xrd');
 
 
 % Data Filter Options
 
 scale=1;               % Scale results to maximum int value in all XRD files
-theta_window=0.15;     % Window for filter/smooth (2theta)
+theta_window=0.5;     % Window for filter/smooth (2theta)
 
 
 % Data Fitting Options
@@ -420,15 +420,15 @@ for i =1:length(XRD)
   end
 end
 
-pause
+% pause
 close all
-save([ XRD{1}.filename(8:end-2) '.mat'])
+% save([ XRD{1}.filename(8:end-2) '.mat'])
 
 % Keep license keys:
 % go =1; while go; pause(60*60) ; go=go+1; end
 
 % Display Results - NON-Fitted
-%%
+%
 
 close all; clc
 
@@ -441,14 +441,14 @@ fs1=24;
 fs2=24;
 fname='Arial';
 
-doffset=.95;
+doffset=.8;
 crop=0.025;
 xloc=.60;
 yloc=0.7*doffset;
 
 
 ID=[1:length(XRD)];
-% ID=[10,2,4,6,8,9]
+% ID=[2,3,1,5,6,4]
 LabelID=[ID];
 
 
@@ -467,7 +467,7 @@ for i=1:length(ID);
 
 end
 
-axis([10 90 -crop offset+1+crop])
+axis([30 100 -crop offset+1+crop])
 xlabel(['2',char(952),char(176)],'Interpreter','tex','fontsize',fs2,'Fontname',fname);
 ylabel(['Intensity'],'Interpreter','tex','fontsize',fs2,'Fontname',fname)
 set(gca,'fontsize',fs0,'ytick',[],'xminortick','on','tickdir','out','linewidth',2,'Fontname',fname)

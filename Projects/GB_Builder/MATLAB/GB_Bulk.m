@@ -48,7 +48,7 @@ end
 
 %% Determine if same bulk structure
 ComLat=norm(Lattice1-Lattice2)<10e-9;
-ComBasL=length(Basis1)==length(Basis2);
+ComBasL=size(Basis1,1)==size(Basis2,1);
 ComSpecL=length(Species1)==length(Species2);
 ComMassL=length(Masses1)==length(Masses2);
 ComBasis=0; ComSpec=0; ComMass=0;
@@ -128,7 +128,7 @@ else
   AtomIDs1=[1:nAtoms1]';
   
 %%%%%%%%%  
-
+  Head1={};
 
   Head1=mfprintf(fid,Head1,'# Bulk: Lattice 1\n');
   Head1=mfprintf(fid,Head1,'#      Types:');  
