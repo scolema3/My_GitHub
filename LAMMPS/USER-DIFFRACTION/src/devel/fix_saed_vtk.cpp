@@ -462,12 +462,10 @@ void FixSAEDvtk::invoke_vector(bigint ntimestep)
             dinv2 = (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]);
             if (dinv2 < Kmax * Kmax) {
                fprintf(fp,"%g\n",vector_total[NROW1]/norm);
-               fflush(fp);
                NROW1++;
                NROW2++;
             } else {
             fprintf(fp,"%d\n",-1);
-            fflush(fp);
             NROW2++;
             }
           }
@@ -487,17 +485,14 @@ void FixSAEDvtk::invoke_vector(bigint ntimestep)
               r = sqrt(r);
               if  ( (r >  (R_Ewald - dR_Ewald) ) && (r < (R_Ewald + dR_Ewald) ) ){
                fprintf(fp,"%g\n",vector_total[NROW1]/norm);
-               fflush(fp);
                NROW2++;
                NROW1++;
               } else {
                 fprintf(fp,"%d\n",-1);
-                fflush(fp);
                 NROW2++;
               }
             } else {
             fprintf(fp,"%d\n",-1);
-            fflush(fp);
             NROW2++;
            }
           }

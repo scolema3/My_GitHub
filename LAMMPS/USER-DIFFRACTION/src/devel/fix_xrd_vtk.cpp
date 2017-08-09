@@ -411,15 +411,12 @@ void FixXRDvtk::invoke_vector(bigint ntimestep)
             if ( (ang <= Max2Theta) & (ang >= Min2Theta) ) {
               NROW1++;
               fprintf(fp,"%g\n",vector_total[NROW1-1]/norm);
-              fflush(fp);
   	        } else{
               fprintf(fp,"%d\n",-1);
-              fflush(fp);
               NROW2++;
             }
           } else {
             fprintf(fp,"%d\n",-1);
-            fflush(fp);
             NROW2++;
           }
         }

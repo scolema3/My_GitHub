@@ -720,7 +720,10 @@ char signal_var=me;
 #endif
           {
             if ( m == round(frac * size_array_rows_CPU) ) {
-              if (me == 0 && screen) fprintf(screen," %0.0f%% -",frac*100);
+              if (me == 0 && screen) {
+                fprintf(screen," %0.0f%% -",frac*100);
+                fflush(screen);
+              }
               frac += 0.1;
             }
             m++;

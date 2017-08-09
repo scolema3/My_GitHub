@@ -421,7 +421,6 @@ if ( (Threshold > 0)) {
             NROW1++;
             if ( (vector_total[NROW1-1]/norm >= Threshold )){
             fprintf(fp,"%g %g %g %g\n",K[0],K[1],K[2],vector_total[NROW1-1]/norm);
-            fflush(fp);
             }
 	        }
         }
@@ -442,7 +441,6 @@ else {//begin normal
           if ( (ang <= Max2Theta) & (ang >= Min2Theta) ) {
             NROW1++;
             fprintf(fp,"%g %g %g %g\n",K[0],K[1],K[2],vector_total[NROW1-1]/norm);
-            fflush(fp);
 	        }
         }
       }

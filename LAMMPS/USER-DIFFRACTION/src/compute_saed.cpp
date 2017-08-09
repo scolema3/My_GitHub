@@ -480,7 +480,10 @@ void ComputeSAED::compute_vector()
 #endif
         {
           if ( m == round(frac * nRows) ) {
-            if (me == 0 && screen) fprintf(screen," %0.0f%% -",frac*100);
+            if (me == 0 && screen) {
+            fprintf(screen," %0.0f%% -",frac*100);
+            fflush(screen);
+            }
             frac += 0.1;
           }
           m++;
